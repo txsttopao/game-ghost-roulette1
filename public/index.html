@@ -106,6 +106,10 @@
                     <label class="switch"><input type="checkbox" id="set-sound" onchange="setSoundSetting(this.checked)"><span></span></label>
                 </div>
                 <div class="set-row">
+                    <div class="set-label"><span data-i18n="setMenuMusic"></span><small data-i18n="setMenuMusicSub"></small></div>
+                    <label class="switch"><input type="checkbox" id="set-menumusic" onchange="Settings.set('menuMusic', this.checked)"><span></span></label>
+                </div>
+                <div class="set-row">
                     <div class="set-label"><span><span data-i18n="setVolume"></span> <b id="set-volume-label">80%</b></span></div>
                     <div class="set-volume">
                         <input type="range" id="set-volume" min="0" max="100" step="5" oninput="setVolumeSetting(Number(this.value))">

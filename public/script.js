@@ -148,6 +148,7 @@ function showScreen(screenId) {
     document.getElementById('lobby-screen').classList.add('hidden');
     document.getElementById('game-board-screen').classList.add('hidden');
     document.getElementById(screenId).classList.remove('hidden');
+    updateAmbient();
 }
 
 function renderRooms(refresh = true) {
@@ -461,7 +462,7 @@ const Sound = (() => {
         return ctx;
     }
     // เสียงซ่า (ลม/ควัน) กรองความถี่ได้ และกวาดความถี่ได้
-    function noise(duration, freq, gain, when = 0, type = 'lowpass', freqEnd = freq) {
+    function noise(duration, freq, gain, when = 0, type = 'lowpass', freqEnd = freq, dest = master) {
         const a = ac(), t = a.currentTime + when;
         const buf = a.createBuffer(1, Math.ceil(a.sampleRate * duration), a.sampleRate);
         const data = buf.getChannelData(0);
@@ -474,34 +475,105 @@ const Sound = (() => {
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(gain, t + duration * 0.3);
         g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-        src.connect(filter).connect(g).connect(master);
+        src.connect(filter).connect(g).connect(dest);
         src.start(t);
     }
-    function tone(freq, duration, gain, type = 'sine', when = 0) {
+    function tone(freq, duration, gain, type = 'sine', when = 0, dest = master) {
         const a = ac(), t = a.currentTime + when;
         const o = a.createOscillator(); o.type = type; o.frequency.value = freq;
         const g = a.createGain();
-        g.gain.setValueAtTime(gain, t);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + Math.min(0.02, duration / 4));
         g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-        o.connect(g).connect(master);
+        o.connect(g).connect(dest);
         o.start(t); o.stop(t + duration);
     }
     // เสียงผีโหยหวน: ความถี่ขึ้นแล้วลง + สั่นแบบ vibrato
-    function wail(gain) {
+    function wail(gain, dest = master, len = 1.4, base = 260) {
         const a = ac(), t = a.currentTime;
         const o = a.createOscillator(); o.type = 'sine';
-        o.frequency.setValueAtTime(260, t);
-        o.frequency.exponentialRampToValueAtTime(720, t + 0.35);
-        o.frequency.exponentialRampToValueAtTime(190, t + 1.3);
+        o.frequency.setValueAtTime(base, t);
+        o.frequency.exponentialRampToValueAtTime(base * 2.77, t + len * 0.25);
+        o.frequency.exponentialRampToValueAtTime(base * 0.73, t + len * 0.93);
         const lfo = a.createOscillator(); lfo.frequency.value = 7;
         const lfoGain = a.createGain(); lfoGain.gain.value = 25;
         lfo.connect(lfoGain).connect(o.frequency);
         const g = a.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(gain, t + 0.12);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
-        o.connect(g).connect(master);
-        o.start(t); lfo.start(t); o.stop(t + 1.4); lfo.stop(t + 1.4);
+        g.gain.exponentialRampToValueAtTime(gain, t + len * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        o.connect(g).connect(dest);
+        o.start(t); lfo.start(t); o.stop(t + len); lfo.stop(t + len);
+    }
+
+    // ---- เสียงบรรยากาศหน้าเมนู: เสียงหึ่งต่ำ + ลมหวีดหวิว + เสียงหลอนสุ่มเป็นระยะ ----
+    let amb = null;
+    function ambientStart() {
+        if (amb) return;
+        const a = ac(), t = a.currentTime;
+        const out = a.createGain();
+        out.gain.setValueAtTime(0.0001, t);
+        out.gain.exponentialRampToValueAtTime(0.6, t + 3);
+        out.connect(master);
+        const nodes = [];
+        // เสียงหึ่งต่ำ (โน้ตเพี้ยนกันนิดๆ ให้มีเสียงสั่นเป็นจังหวะ)
+        const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 240; lp.Q.value = 5;
+        lp.connect(out);
+        [[55, 'sawtooth', 0.05], [55.7, 'sawtooth', 0.05], [77.8, 'sine', 0.07]].forEach(([f, type, gv]) => {
+            const o = a.createOscillator(); o.type = type; o.frequency.value = f;
+            const g = a.createGain(); g.gain.value = gv;
+            o.connect(g).connect(lp); o.start(); nodes.push(o);
+        });
+        const lfo = a.createOscillator(); lfo.frequency.value = 0.07;
+        const lfoGain = a.createGain(); lfoGain.gain.value = 140;
+        lfo.connect(lfoGain).connect(lp.frequency); lfo.start(); nodes.push(lfo);
+        // ลมหวีดหวิว: เสียงซ่าวนลูป กวาดความถี่ช้าๆ
+        const buf = a.createBuffer(1, a.sampleRate * 4, a.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const wind = a.createBufferSource(); wind.buffer = buf; wind.loop = true;
+        const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = 4;
+        const windGain = a.createGain(); windGain.gain.value = 0.09;
+        const sweep = a.createOscillator(); sweep.frequency.value = 0.11;
+        const sweepGain = a.createGain(); sweepGain.gain.value = 320;
+        sweep.connect(sweepGain).connect(bp.frequency);
+        wind.connect(bp).connect(windGain).connect(out);
+        wind.start(); sweep.start(); nodes.push(wind, sweep);
+        amb = { out, nodes, timer: null };
+        nextAmbientEvent(4000);
+    }
+    function nextAmbientEvent(delay) {
+        amb.timer = setTimeout(() => {
+            if (!amb) return;
+            ambientEvent(amb.out);
+            nextAmbientEvent(6000 + Math.random() * 9000);
+        }, delay);
+    }
+    function ambientEvent(dest) {
+        const r = Math.random();
+        if (r < 0.3) {
+            wail(0.07, dest, 3.2, 160 + Math.random() * 80);                       // ผีโหยหวนไกลๆ
+        } else if (r < 0.6) {
+            // กล่องดนตรีเพี้ยนๆ
+            const tunes = [[659, 622, 523, 494], [880, 831, 659, 622, 587], [523, 740, 494, 698]];
+            tunes[Math.floor(Math.random() * tunes.length)]
+                .forEach((f, i) => tone(f, 1.6, 0.05, 'triangle', i * 0.5, dest));
+        } else if (r < 0.8) {
+            [0, 0.28, 1.1, 1.38].forEach(w => tone(48, 0.35, 0.3, 'sine', w, dest)); // หัวใจเต้น
+        } else {
+            for (let i = 0; i < 5; i++) noise(0.25, 2200 + Math.random() * 1500, 0.05, i * 0.22, 'bandpass', 1500, dest); // เสียงกระซิบ
+        }
+    }
+    function ambientStop() {
+        if (!amb) return;
+        const { out, nodes, timer } = amb;
+        amb = null;
+        clearTimeout(timer);
+        const t = ctx.currentTime;
+        out.gain.cancelScheduledValues(t);
+        out.gain.setValueAtTime(Math.max(out.gain.value, 0.0001), t);
+        out.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+        setTimeout(() => { nodes.forEach(n => n.stop()); out.disconnect(); }, 1400);
     }
     return {
         get enabled() { return enabled; },
@@ -514,7 +586,8 @@ const Sound = (() => {
         win() { if (!enabled) return; [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, 0.12, 'triangle', i * 0.14)); },
         card() { if (!enabled) return; noise(0.14, 5000, 0.22, 0, 'highpass', 2000); tone(880, 0.12, 0.06, 'triangle', 0.05); },
         deal(n) { if (!enabled) return; for (let i = 0; i < n; i++) noise(0.1, 4000, 0.18, i * 0.14, 'highpass', 1500); },
-        bang() { if (!enabled) return; wail(0.35); tone(55, 0.6, 0.45); noise(0.5, 3000, 0.15, 0, 'highpass', 800); } // BOO!
+        bang() { if (!enabled) return; wail(0.35); tone(55, 0.6, 0.45); noise(0.5, 3000, 0.15, 0, 'highpass', 800); }, // BOO!
+        ambient(on) { if (on) ambientStart(); else ambientStop(); }
     };
 })();
 
@@ -523,8 +596,22 @@ function toggleSound() {
     syncSoundButton();
     if (Sound.enabled) Sound.click();
 }
+// เปิดเสียงบรรยากาศเฉพาะหน้าเมนู (ก่อนเข้าห้อง) เบราว์เซอร์ให้เล่นเสียงได้หลังผู้ใช้แตะจอครั้งแรก
+let userInteracted = false;
+function updateAmbient() {
+    if (!userInteracted) return;   // ยังไม่แตะจอ (และกันเรียกก่อน Settings ถูกสร้างตอนโหลดหน้า)
+    const inRoom = ['lobby-screen', 'game-board-screen'].some(id => !document.getElementById(id).classList.contains('hidden'));
+    Sound.ambient(Sound.enabled && Settings.get('menuMusic') && !inRoom);
+}
+['pointerdown', 'mousedown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => {
+    if (userInteracted) return;
+    userInteracted = true;
+    updateAmbient();
+}, { capture: true }));
+
 function syncSoundButton() {
     document.getElementById('sound-toggle').innerText = t(Sound.enabled ? 'soundOn' : 'soundOff');
+    updateAmbient();
     const box = document.getElementById('set-sound');
     if (box) box.checked = Sound.enabled;
 }
@@ -681,7 +768,7 @@ function flyCardTo(playerId, delay) {
 // 11. หน้าตั้งค่า (SETTING) — จำไว้ในเครื่อง
 // ==========================================
 const Settings = (() => {
-    const defaults = { shake: true, bgAnim: true };
+    const defaults = { shake: true, bgAnim: true, menuMusic: true };
     const saved = JSON.parse(localStorage.getItem('ghostSettings') || '{}');
     const data = { ...defaults, ...saved };
     return {
@@ -693,6 +780,7 @@ const Settings = (() => {
 
 function applySettings() {
     document.body.classList.toggle('no-bg-anim', !Settings.get('bgAnim'));
+    updateAmbient();
 }
 applySettings();
 
@@ -704,6 +792,7 @@ function openSettings() {
     document.getElementById('set-volume-label').innerText = `${Math.round(Sound.volume * 100)}%`;
     document.getElementById('set-shake').checked = Settings.get('shake');
     document.getElementById('set-bganim').checked = Settings.get('bgAnim');
+    document.getElementById('set-menumusic').checked = Settings.get('menuMusic');
     document.getElementById('settings-modal').classList.remove('hidden');
 }
 function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
