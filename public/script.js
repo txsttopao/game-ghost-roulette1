@@ -453,3 +453,10 @@ function toggleSound() {
     if (Sound.enabled) Sound.click();
 }
 document.getElementById('sound-toggle').innerText = Sound.enabled ? '🔊' : '🔇';
+
+// ==========================================
+// 8. หน้าต่างกติกา
+// ==========================================
+function openRules() { document.getElementById('rules-modal').classList.remove('hidden'); }
+function closeRules() { document.getElementById('rules-modal').classList.add('hidden'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRules(); });

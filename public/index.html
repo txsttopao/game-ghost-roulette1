@@ -52,8 +52,71 @@
         <div class="menu-buttons">
             <button onclick="showScreen('join-room-screen'); renderRooms();">JOIN ROOM</button>
             <button onclick="showScreen('create-room-screen')">CREATE ROOM</button>
-            <button>Rule</button>
+            <button onclick="openRules()">Rule</button>
             <button>SETTING</button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- หน้าต่างกติกา (RULE) -->
+    <!-- ========================================== -->
+    <div id="rules-modal" class="modal-backdrop hidden" onclick="if (event.target === this) closeRules()">
+        <div class="modal">
+            <button class="modal-close" onclick="closeRules()" title="ปิด">✕</button>
+            <h2 class="modal-title">กติกา</h2>
+
+            <div class="modal-body">
+                <section>
+                    <h3>🎯 เป้าหมาย</h3>
+                    <p>ทุกคนเริ่มด้วยเลือด <b>3 ขีด</b> ใครรอดเป็นคนสุดท้ายชนะ</p>
+                </section>
+
+                <section>
+                    <h3>⌨️ เทิร์นของคุณ</h3>
+                    <ol>
+                        <li>กด <b>เริ่มเทิร์นของคุณ</b> (หรือกดการ์ดในมือเพื่อใช้สกิลในเทิร์นนี้)</li>
+                        <li>ระบบสุ่มตัวอักษรให้ 1 ตัว คุณมีเวลา <b>5 วินาที</b> พิมพ์ศัพท์อังกฤษที่ขึ้นต้นด้วยตัวนั้นแล้วกด <b>Enter</b></li>
+                        <li>คำต้องยาว <b>3 ตัวขึ้นไป</b> ต้องมีในพจนานุกรม และ<b>ห้ามซ้ำ</b>กับคำที่ใครในเกมใช้ไปแล้ว</li>
+                        <li><b>พิมพ์ผ่าน</b> → ได้สิทธิ์ลั่นไก เลือกยิงใครก็ได้ รวมถึงยิงตัวเอง</li>
+                        <li><b>พิมพ์พลาด / หมดเวลา</b> → เสียเทิร์น ไม่ได้ยิง</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3>🔫 โม่ปืน</h3>
+                    <p>โม่มี 5 นัด: <span class="r-real">กระสุนจริง 3</span> + <span class="r-fake">ลูกหลอก 2</span> สลับลำดับแบบสุ่ม</p>
+                    <ul>
+                        <li>โดน<span class="r-real">กระสุนจริง</span> → เสียเลือด 1 ขีด</li>
+                        <li>เจอ<span class="r-fake">ลูกหลอก</span> → *คลิก* รอดไป</li>
+                        <li>ดูจำนวนจริง/หลอกที่เหลือได้ใต้โม่ปืนกลางโต๊ะ ยิงครบ 5 นัดแล้วจะบรรจุใหม่</li>
+                        <li>💡 ถ้ารู้ว่านัดต่อไปเป็นลูกหลอก ยิงตัวเองก็ปลอดภัย</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>🎴 การ์ดสกิล</h3>
+                    <p>คำยาว <b>5 ตัวขึ้นไป</b> ได้การ์ด <span class="r-normal">NORMAL</span> · ยาว <b>8 ตัวขึ้นไป</b> ได้การ์ด <span class="r-rare">RARE</span> (คนอื่นเห็นแค่จำนวนการ์ดของคุณ ไม่เห็นว่าเป็นใบไหน)</p>
+                    <p>ใช้การ์ด: กดการ์ด<b>ก่อน</b>เริ่มเทิร์น แล้วต้องพิมพ์ศัพท์ให้ผ่านการ์ดถึงจะทำงาน ถ้าพิมพ์พลาด <b>การ์ดใบนั้นจะถูกยึด</b></p>
+                    <table class="rules-cards">
+                        <tr><td><span class="r-normal">👁️ ดวงตาผีสาง</span></td><td>แอบดูว่านัดต่อไปจริงหรือหลอก (เห็นคนเดียว)</td></tr>
+                        <tr><td><span class="r-normal">🔥 ธูปบูชา</span></td><td>หมุนโม่ทิ้ง 1 นัด แล้วไม่ต้องยิงในเทิร์นนี้</td></tr>
+                        <tr><td><span class="r-normal">🌑 เศษเสี้ยววิญญาณ</span></td><td>ฟื้นเลือด 1 ขีด (สูงสุด 3)</td></tr>
+                        <tr><td><span class="r-rare">🩸 เลือดศักดิ์สิทธิ์</span></td><td>สลับนัดต่อไป จริง ⇄ หลอก</td></tr>
+                        <tr><td><span class="r-rare">⛓️ โซ่ตรวนยมโลก</span></td><td>ผู้เล่นคนถัดไปถูกข้ามเทิร์น</td></tr>
+                        <tr><td><span class="r-rare">🗡️ ลิ่มเงิน</span></td><td>ถ้านัดที่ยิงเป็นกระสุนจริง ทำดาเมจ x2</td></tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>👥 ห้อง & กติกาเพิ่มเติม</h3>
+                    <ul>
+                        <li>หัวห้อง 👑 กด START GAME ได้เมื่อมีผู้เล่น 2 คนขึ้นไป หัวห้องได้เล่นก่อน แล้ววนตามลำดับคนที่เข้าห้อง</li>
+                        <li>ไม่กดเริ่มเทิร์นภายใน <b>30 วินาที</b> → ถูกข้ามเทิร์น</li>
+                        <li>ไม่เลือกเป้าภายใน <b>15 วินาที</b> → ระบบสุ่มเป้าให้</li>
+                        <li>ออกจากเกมกลางคัน = ตาย</li>
+                    </ul>
+                </section>
+            </div>
         </div>
     </div>
 

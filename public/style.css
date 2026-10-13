@@ -426,3 +426,49 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; }
     color: #fff; text-align: center; padding: 12px 70px; font-size: 16px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.7);
 }
+
+/* ========================================== */
+/* RULES MODAL */
+/* ========================================== */
+.modal-backdrop {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    animation: fade-in 0.2s ease-out;
+}
+@keyframes fade-in { from { opacity: 0; } }
+.modal {
+    position: relative; width: min(720px, 92vw); max-height: 88vh;
+    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, #1e0b0b, #0e0505);
+    border: 1px solid var(--line); border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.9), inset 0 0 40px rgba(120,0,0,0.15);
+    padding: 22px 28px 18px;
+    animation: pop-in 0.25s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+@keyframes pop-in { from { transform: scale(0.9); opacity: 0; } }
+.modal-title {
+    font-family: 'Creepster', 'Kanit', cursive; font-weight: 400; font-size: 46px; letter-spacing: 3px;
+    color: var(--blood-bright); text-shadow: 0 0 14px rgba(255,0,0,0.5); text-align: center; margin: 0 0 10px;
+}
+.modal-close {
+    position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; padding: 0; margin: 0;
+    border-radius: 50%; background: transparent; border: 1px solid var(--line); box-shadow: none; color: var(--muted);
+}
+.modal-close:hover { color: #fff; border-color: var(--blood-bright); }
+.modal-body { overflow-y: auto; padding-right: 8px; line-height: 1.6; font-size: 15px; }
+.modal-body::-webkit-scrollbar { width: 6px; }
+.modal-body::-webkit-scrollbar-thumb { background: #4a2a2a; border-radius: 3px; }
+.modal-body section { background: rgba(0,0,0,0.3); border: 1px solid rgba(212,169,74,0.12); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
+.modal-body h3 { margin: 0 0 6px; color: var(--brass); font-size: 18px; font-weight: 600; }
+.modal-body p { margin: 4px 0; }
+.modal-body ol, .modal-body ul { margin: 4px 0; padding-left: 22px; }
+.modal-body li { margin: 2px 0; }
+.modal-body b { color: #fff; }
+.r-real { color: var(--blood-bright); font-weight: 600; }
+.r-fake { color: #cfd8dc; font-weight: 600; }
+.r-normal { color: #f6d365; font-weight: 600; white-space: nowrap; }
+.r-rare { color: #ff6b6b; font-weight: 600; white-space: nowrap; }
+.rules-cards { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+.rules-cards td { padding: 6px 8px; border-top: 1px solid rgba(255,255,255,0.06); vertical-align: top; }
+.rules-cards td:first-child { width: 42%; }
