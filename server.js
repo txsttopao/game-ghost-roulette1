@@ -19,6 +19,8 @@ const TURN_SECONDS = 10;     // เวลาพิมพ์ศัพท์
 const GRACE_MS = 500;        // เผื่อดีเลย์เน็ต
 const IDLE_MS = 30000;       // ไม่กดเริ่มเทิร์นภายในเวลานี้ = ข้ามเทิร์น
 const TARGET_MS = 15000;     // ไม่เลือกเป้าหมายภายในเวลานี้ = สุ่มเป้าให้
+const HAND_MAX = 5;          // ถือการ์ดได้สูงสุด
+const RARE_CHANCE = 0.3;     // โอกาสได้การ์ด RARE ตอนแจก
 const RESET_MS = 60000;      // จบเกมแล้วไม่มีใครกด "เล่นอีกครั้ง" ภายในเวลานี้ = กลับห้องรอเอง
 
 // ==========================================
@@ -110,6 +112,7 @@ function viewFor(room, playerId) {
             message: g.message,
             crosses: { realLeft: 3 - g.realThrown, fakeLeft: 2 - g.fakeThrown, total: 5, thrown: g.thrown, fired: g.fired, reloads: g.reloads },
             gameNo: g.gameNo,
+            dealIn: room.players.filter(p => p.hp > 0 && !g.roundPlayed.has(p.id)).length,
             results: g.results || null
         } : null
     };
@@ -199,10 +202,10 @@ function startGame(room) {
     room.game = {
         crossPool: [], thrown: 0, realThrown: 0, fakeThrown: 0,
         turnIndex: 0, skipNextTurn: false,
-        effects: { doubleDamage: false, inverted: false, skipStabPhase: false },
+        effects: { doubleDamage: false, inverted: false },
         phase: 'busy', letter: '?', timeLeft: 0, typing: '', message: '',
-        usedWords: new Set(), isSkillMode: false, cardIndex: -1, word: '',
-        gameNo: nextGameNo++, eliminated: [], stats: {}, results: null,
+        usedWords: new Set(), word: '', botCardsThisTurn: 0, botPeek: null,
+        gameNo: nextGameNo++, eliminated: [], stats: {}, results: null, roundPlayed: new Set(),
         timeout: null, interval: null
     };
     refillAndShuffleCrosses(room.game);
@@ -264,11 +267,39 @@ function nextTurn(room) {
     beginTurn(room);
 }
 
+// ทุกคนที่ยังรอดเล่นครบ 1 รอบ -> แจกการ์ดคนละ 1 ใบ
+function dealRound(room) {
+    const g = room.game;
+    const got = [];
+    room.players.forEach(p => {
+        if (p.hp <= 0 || p.cards.length >= HAND_MAX) return;
+        p.cards.push(randomItem(Math.random() < RARE_CHANCE ? rareCardsPool : normalCardsPool));
+        got.push(p.id);
+    });
+    g.roundPlayed.clear();
+    addLog(room, `<span class="log-sys">🎴 ครบ 1 รอบ! แจกการ์ดคนละ 1 ใบ</span>`);
+    io.to(room.id).emit('dealt', got);
+}
+
+function scheduleIdle(room) {
+    const cur = room.players[room.game.turnIndex];
+    schedule(room, r => {
+        addLog(r, `<span class="log-sys">⌛ ${pTag(cur)} ไม่กดเริ่มเทิร์น ข้ามเทิร์น</span>`);
+        nextTurn(r);
+    }, IDLE_MS);
+}
+
 function beginTurn(room) {
     const g = room.game;
     if (checkGameOver(room)) return;
     const cur = room.players[g.turnIndex];
     g.letter = '?'; g.typing = ''; g.timeLeft = 0;
+    // ผลการ์ด 🩸 กับ 🗡️ ใช้ได้แค่เทิร์นของคนที่ใช้
+    g.effects.doubleDamage = false; g.effects.inverted = false;
+    g.botPeek = null; g.botCardsThisTurn = 0;
+
+    if (room.players.every(p => p.hp <= 0 || g.roundPlayed.has(p.id))) dealRound(room);
+    g.roundPlayed.add(cur.id);
 
     if (g.skipNextTurn) {
         g.skipNextTurn = false;
@@ -283,31 +314,48 @@ function beginTurn(room) {
     g.phase = 'idle';
     g.message = `ถึงเทิร์นของ ${cur.name}`;
     sendRoomState(room);
-    schedule(room, r => {
-        addLog(r, `<span class="log-sys">⌛ ${pTag(cur)} ไม่กดเริ่มเทิร์น ข้ามเทิร์น</span>`);
-        nextTurn(r);
-    }, IDLE_MS);
+    if (!cur.isBot && cur.cards.length) privateMsg(cur, 'ถึงเทิร์นของคุณ! ใช้การ์ดก่อนได้ แล้วกดเริ่มเทิร์น');
+    scheduleIdle(room);
     botAct(room);
 }
 
-function startTurnPhase(room, cardIndex) {
+// ใช้การ์ดก่อนกดเริ่มเทิร์น — ได้ผลทันที (ใช้ได้หลายใบ)
+function useCard(room, idx) {
+    const g = room.game;
+    const me = room.players[g.turnIndex];
+    const cardId = me.cards.splice(idx, 1)[0];
+    g.botCardsThisTurn++;
+    io.to(room.id).emit('cardPlayed', { playerId: me.id, cardId });
+    const priv = applySkillEffect(room, g.turnIndex, cardId).trim();
+
+    if (cardId === 'Incense') {
+        clearTimers(g);
+        g.phase = 'busy';
+        g.message = `🔥 ${me.name} จุดธูปปัดเป่าวิญญาณทิ้ง 1 ดวง แล้วจบเทิร์น`;
+        sendRoomState(room);
+        privateMsg(me, priv);
+        schedule(room, nextTurn, 2500);
+        return;
+    }
+    g.message = `${me.name} ใช้การ์ด ${cardsData[cardId].name}`;
+    sendRoomState(room);
+    privateMsg(me, priv + (me.cards.length ? '\nใช้การ์ดเพิ่มได้ หรือกดเริ่มเทิร์น' : '\nกดเริ่มเทิร์นได้เลย'));
+    scheduleIdle(room);
+    botAct(room);
+}
+
+function startTurnPhase(room) {
     const g = room.game;
     const me = room.players[g.turnIndex];
     clearTimers(g);
 
-    g.isSkillMode = cardIndex !== -1;
-    g.cardIndex = cardIndex;
     g.letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)];
     g.timeLeft = TURN_SECONDS;
     g.typing = '';
     g.phase = 'typing';
-    g.message = g.isSkillMode
-        ? `${me.name} ใช้การ์ดสกิล! กำลังพิมพ์ศัพท์ที่ขึ้นต้นด้วย ${g.letter}`
-        : `${me.name} กำลังพิมพ์ศัพท์ที่ขึ้นต้นด้วย ${g.letter}`;
+    g.message = `${me.name} กำลังพิมพ์ศัพท์ที่ขึ้นต้นด้วย ${g.letter}`;
     sendRoomState(room);
-    privateMsg(me, g.isSkillMode
-        ? `ใช้สกิล! รีบพิมพ์ศัพท์ที่ขึ้นต้นด้วย ${g.letter}`
-        : `พิมพ์ศัพท์ที่ขึ้นต้นด้วย ${g.letter} (ยาว 3 ขึ้นไป)`);
+    privateMsg(me, `พิมพ์ศัพท์ที่ขึ้นต้นด้วย ${g.letter} (ยาว 3 ขึ้นไป)`);
 
     g.interval = setInterval(() => {
         if (g.timeLeft > 0) { g.timeLeft--; io.to(room.id).emit('tick', g.timeLeft); }
@@ -335,35 +383,11 @@ function validateWord(room, rawWord) {
     if (word.length > st.longest.length) st.longest = word;
     g.word = word;
     g.typing = word;
-    let successMsg = "เยี่ยมมาก! ได้สิทธิ์ปล่อยวิญญาณ";
-
-    if (word.length >= 5) {
-        const tier = word.length >= 8 ? 'rare' : 'normal';
-        me.cards.push(randomItem(tier === 'rare' ? rareCardsPool : normalCardsPool));
-        successMsg += `\n+ ได้การ์ดระดับ ${tier.toUpperCase()}!`;
-        addLog(room, `<span class="log-sys">✨ ${pTag(me)} ได้รับการ์ด 1 ใบ</span>`);
-    }
-
-    if (g.isSkillMode) {
-        const usedCardId = me.cards.splice(g.cardIndex, 1)[0];
-        successMsg += applySkillEffect(room, g.turnIndex, usedCardId);
-    }
-
-    if (g.effects.skipStabPhase) {
-        g.effects.skipStabPhase = false;
-        g.phase = 'busy';
-        g.message = `${me.name} ใช้คำว่า ${word} และไม่ต้องปล่อยวิญญาณเทิร์นนี้`;
-        addLog(room, `${pTag(me)} ใช้คำว่า <span class="log-word">${word}</span> (ไม่สาป)`);
-        sendRoomState(room);
-        privateMsg(me, successMsg);
-        schedule(room, nextTurn, 3000);
-        return;
-    }
 
     g.phase = 'target';
     g.message = `${me.name} ใช้คำว่า ${word} — กำลังเลือกว่าจะสาปใคร...`;
     sendRoomState(room);
-    privateMsg(me, successMsg + "\nเลือกคนที่จะสาป!");
+    privateMsg(me, "เยี่ยมมาก! ได้สิทธิ์ปล่อยวิญญาณ\nเลือกคนที่จะสาป!");
     schedule(room, r => {
         const alive = r.players.map((p, i) => i).filter(i => r.players[i].hp > 0);
         addLog(r, `<span class="log-sys">⌛ ${pTag(me)} เลือกเป้าไม่ทัน สุ่มเป้าให้</span>`);
@@ -378,54 +402,49 @@ function failTurn(room, reason) {
     clearTimers(g);
     g.phase = 'busy';
     g.message = `${me.name} พลาด! (${reason}) หมดสิทธิ์ปล่อยวิญญาณในเทิร์นนี้`;
-
-    if (g.isSkillMode && me.cards[g.cardIndex]) {
-        const lostCard = cardsData[me.cards.splice(g.cardIndex, 1)[0]].name;
-        reason += `\nถูกยึดการ์ด [${lostCard}]!`;
-    }
     addLog(room, `<span class="log-sys">${pTag(me)} พิมพ์พลาดและเสียเทิร์น</span>`);
     sendRoomState(room);
     privateMsg(me, reason + "\nหมดสิทธิ์ปล่อยวิญญาณในเทิร์นนี้!");
     schedule(room, nextTurn, 3000);
 }
 
-// คืนข้อความส่วนตัวให้คนใช้สกิล ส่วนคนอื่นเห็นแค่ใน log
+// คืนข้อความส่วนตัวให้คนใช้การ์ด ส่วนคนอื่นเห็นใน log
 function applySkillEffect(room, playerIdx, cardId) {
     const g = room.game;
     const p = room.players[playerIdx];
     if (g.crossPool.length === 0) refillAndShuffleCrosses(g);
 
-    addLog(room, `${pTag(p)} ใช้สกิล <span class="log-card">[${cardsData[cardId].name}]</span>`);
+    addLog(room, `${pTag(p)} ใช้การ์ด <span class="log-card">[${cardsData[cardId].name}]</span>`);
 
     switch (cardId) {
         case "Ouija":
             addLog(room, `- <span class="log-sys">${pTag(p)} แอบส่องวงเวท!</span>`);
             if (p.isBot) g.botPeek = { id: p.id, real: g.crossPool[0] === 'real' };
-            return `\n👁️ ดวงต่อไปคือ [${g.crossPool[0] === 'real' ? "👻 วิญญาณร้าย" : "💨 เงาลวง"}]!`;
+            return `👁️ ดวงต่อไปคือ [${g.crossPool[0] === 'real' ? "👻 วิญญาณร้าย" : "💨 เงาลวง"}]!`;
         case "Incense": {
             const discarded = g.crossPool.shift(); g.thrown++;
             if (discarded === 'real') g.realThrown++; else g.fakeThrown++;
             g.fired.push(discarded);
-            g.effects.skipStabPhase = true;
-            addLog(room, `- <span class="log-sys">ปัดเป่าวิญญาณทิ้ง 1 ดวงอย่างปลอดภัย</span>`);
-            return `\n🔥 ปัดเป่าวิญญาณทิ้งไป 1 ดวง!`;
+            if (g.botPeek) g.botPeek = null;
+            addLog(room, `- <span class="log-sys">ปัดเป่าวิญญาณทิ้ง 1 ดวง แล้วจบเทิร์น</span>`);
+            return `🔥 ปัดเป่าวิญญาณทิ้งไป 1 ดวง จบเทิร์นอย่างปลอดภัย`;
         }
         case "Soul":
             p.hp = Math.min(p.hp + 1, 3);
-            addLog(room, `- <span class="log-sys">ฟื้นฟูเลือด 1 ขีด</span>`);
-            return `\n🌑 ฟื้นฟู HP 1 หน่วย!`;
+            addLog(room, `- <span class="log-sys">จุดเทียนชีวิตคืน 1 เล่ม</span>`);
+            return `🌑 จุดเทียนชีวิตคืน 1 เล่ม!`;
         case "Blood":
-            g.effects.inverted = true;
+            g.effects.inverted = !g.effects.inverted;
             addLog(room, `- <span class="log-sys">สลับวิญญาณดวงต่อไป ร้าย⇄ลวง!</span>`);
-            return `\n🩸 สลับวิญญาณดวงต่อไป ร้าย⇄ลวง!`;
+            return `🩸 สลับวิญญาณดวงต่อไป ร้าย⇄ลวง (เฉพาะการสาปเทิร์นนี้)`;
         case "Chains":
             g.skipNextTurn = true;
             addLog(room, `- <span class="log-sys">เตรียมข้ามเทิร์นคนถัดไป!</span>`);
-            return `\n⛓️ ผู้เล่นคนถัดไปจะถูกข้ามเทิร์น!`;
+            return `⛓️ ผู้เล่นคนถัดไปจะถูกข้ามเทิร์น!`;
         case "Stake":
             g.effects.doubleDamage = true;
             addLog(room, `- <span class="log-sys">เสริมพลังทำดาเมจ x2!</span>`);
-            return `\n🗡️ ถ้าเป็นวิญญาณร้ายจะทำดาเมจ x2!`;
+            return `🗡️ การสาปเทิร์นนี้ ถ้าเป็นวิญญาณร้ายทำดาเมจ x2!`;
     }
     return "";
 }
@@ -488,6 +507,23 @@ function addBot(room) {
     room.players.push({ id: `bot-${nextBotId++}`, name, hp: 3, cards: [], connected: true, isBot: true });
 }
 
+// บอทเลือกการ์ดที่จะใช้ก่อนเริ่มเทิร์น (หรือ null = ไม่ใช้)
+function botPickCard(room, bot) {
+    const g = room.game;
+    const has = id => bot.cards.includes(id);
+    const peek = g.botPeek && g.botPeek.id === bot.id ? (g.botPeek.real !== g.effects.inverted) : null;
+    if (has('Soul') && bot.hp < 3) return 'Soul';
+    if (has('Ouija') && peek === null) return 'Ouija';
+    if (peek === true && has('Stake') && !g.effects.doubleDamage) return 'Stake';
+    if (peek === false && has('Blood')) return 'Blood';           // เปลี่ยนเงาลวงให้เป็นวิญญาณร้ายแล้วสาปคนอื่น
+    if (peek === null) {
+        if (has('Incense') && bot.hp === 1 && Math.random() < 0.5) return 'Incense';
+        if (has('Chains') && Math.random() < 0.35) return 'Chains';
+        if (has('Stake') && !g.effects.doubleDamage && Math.random() < 0.25) return 'Stake';
+    }
+    return null;
+}
+
 // ให้บอทที่ถึงเทิร์นทำอะไรสักอย่างตามเฟส
 function botAct(room) {
     const g = room.game;
@@ -499,8 +535,9 @@ function botAct(room) {
     if (phase === 'idle') {
         g.botTimer = setTimeout(() => {
             if (!stillMyMove()) return;
-            const useCard = bot.cards.length > 0 && Math.random() < 0.45;
-            startTurnPhase(room, useCard ? Math.floor(Math.random() * bot.cards.length) : -1);
+            const card = g.botCardsThisTurn < 3 ? botPickCard(room, bot) : null;
+            if (card) useCard(room, bot.cards.indexOf(card));
+            else startTurnPhase(room);
         }, between(1200, 2500));
     } else if (phase === 'typing') {
         g.botTimer = setTimeout(async () => {
@@ -637,15 +674,17 @@ io.on('connection', socket => {
         startGame(room);
     });
 
-    socket.on('startTurn', ({ cardIndex } = {}) => {
+    socket.on('startTurn', () => {
+        const ctx = myTurn('idle');
+        if (ctx) startTurnPhase(ctx.room);
+    });
+
+    socket.on('useCard', index => {
         const ctx = myTurn('idle');
         if (!ctx) return;
-        let idx = -1;
-        if (cardIndex !== null && cardIndex !== undefined) {
-            idx = Number(cardIndex);
-            if (!Number.isInteger(idx) || idx < 0 || idx >= ctx.me.cards.length) return;
-        }
-        startTurnPhase(ctx.room, idx);
+        const idx = Number(index);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= ctx.me.cards.length) return;
+        useCard(ctx.room, idx);
     });
 
     socket.on('typing', text => {

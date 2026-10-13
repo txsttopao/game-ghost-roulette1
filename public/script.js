@@ -17,12 +17,12 @@ const TURN_SECONDS = 10;
 const avatars = ['👻', '🧛', '🧟', '💀', '🎃'];
 
 const cardsData = {
-    "Ouija": { id: "Ouija", name: "👁️ ดวงตาผีสาง", tier: "normal" },
-    "Incense": { id: "Incense", name: "🔥 ธูปบูชา", tier: "normal" },
-    "Soul": { id: "Soul", name: "🌑 เศษเสี้ยววิญญาณ", tier: "normal" },
-    "Blood": { id: "Blood", name: "🩸 เลือดศักดิ์สิทธิ์", tier: "rare" },
-    "Chains": { id: "Chains", name: "⛓️ โซ่ตรวนยมโลก", tier: "rare" },
-    "Stake": { id: "Stake", name: "🗡️ ลิ่มเงิน", tier: "rare" }
+    "Ouija":   { emoji: "👁️", title: "ดวงตาผีสาง",       tier: "normal", desc: "แอบดูว่าดวงถัดไปเป็นวิญญาณร้ายหรือเงาลวง" },
+    "Incense": { emoji: "🔥", title: "ธูปบูชา",          tier: "normal", desc: "ปัดเป่าวิญญาณดวงบนทิ้ง แล้วจบเทิร์นทันที" },
+    "Soul":    { emoji: "🌑", title: "เศษเสี้ยววิญญาณ",   tier: "normal", desc: "จุดเทียนชีวิตคืน 1 เล่ม" },
+    "Blood":   { emoji: "🩸", title: "เลือดศักดิ์สิทธิ์",  tier: "rare",   desc: "สลับดวงถัดไป ร้าย⇄ลวง (เทิร์นนี้)" },
+    "Chains":  { emoji: "⛓️", title: "โซ่ตรวนยมโลก",     tier: "rare",   desc: "ผู้เล่นคนถัดไปถูกข้ามเทิร์น" },
+    "Stake":   { emoji: "🗡️", title: "ลิ่มเงิน",          tier: "rare",   desc: "สาปเทิร์นนี้ ถ้าโดนวิญญาณร้าย ดาเมจ x2" }
 };
 
 const ui = {
@@ -33,7 +33,9 @@ const ui = {
     startBtn: document.getElementById("start-btn"),
     targets: document.getElementById("target-selection"),
     crossStatus: document.getElementById("cross-status"),
-    myCards: document.getElementById("my-cards-container"),
+    hand: document.getElementById("hand"),
+    dealInfo: document.getElementById("deal-info"),
+    reveal: document.getElementById("card-reveal"),
     timerFill: document.getElementById("timer-fill"),
     board: document.getElementById("game-board-screen"),
     revolver: document.getElementById("revolver"),
@@ -88,6 +90,22 @@ socket.on('log', html => addLog(html));
 socket.on('tick', t => { ui.time.innerText = t; ui.timerFill.style.width = `${t / TURN_SECONDS * 100}%`; if (t <= 2) Sound.tick(); });
 socket.on('privateMsg', text => { ui.message.innerText = text; });
 socket.on('typing', text => { if (!isMyTurn()) ui.input.value = text; });
+
+// แจกการ์ด -> ไพ่บินจากกลางโต๊ะไปหาแต่ละคน
+socket.on('dealt', ids => {
+    showBanner('DEAL!', 'deal');
+    Sound.deal(ids.length);
+    ids.forEach((id, i) => flyCardTo(id, i * 140));
+});
+
+// มีคนใช้การ์ด -> เปิดไพ่ใบใหญ่กลางจอ
+socket.on('cardPlayed', ({ playerId, cardId }) => {
+    const p = currentRoom && currentRoom.players.find(x => x.id === playerId);
+    ui.reveal.innerHTML = `<div class="play-card big tier-${cardsData[cardId].tier}">${cardHTML(cardId)}</div><div class="reveal-caption"></div>`;
+    ui.reveal.querySelector('.reveal-caption').innerText = `${playerId === myId ? 'คุณ' : (p ? p.name : '')} ใช้การ์ด!`;
+    restartAnim(ui.reveal, 'show');
+    Sound.card();
+});
 
 // ร่ายคาถาใส่เป้า -> วงเวทหมุนลุ้น
 socket.on('aim', ({ targetId }) => {
@@ -294,20 +312,16 @@ function renderGame(state) {
         el.classList.toggle('current-turn', p.id === g.turnId && g.phase !== 'over');
 
         if (slot > 0) {
-            el.querySelector('.cards-hidden').innerText = p.cardCount === 0 ? "ไม่มีการ์ด" : `${"🎴".repeat(p.cardCount)} (ซ่อน)`;
+            el.querySelector('.cards-hidden').innerHTML = p.cardCount === 0
+                ? 'ไม่มีการ์ด'
+                : Array.from({ length: p.cardCount }, (_, i) => `<span class="mini-back" style="--r:${(i - (p.cardCount - 1) / 2) * 9}deg"></span>`).join('');
         }
     }
 
-    // การ์ดของเรา
-    ui.myCards.innerHTML = "";
-    state.myCards.forEach((cardId, index) => {
-        const cardData = cardsData[cardId];
-        const btn = document.createElement("button");
-        btn.className = `skill-card ${cardData.tier === 'rare' ? 'card-rare' : 'card-normal'}`;
-        btn.innerText = cardData.name;
-        btn.onclick = () => startSkillTurn(index);
-        ui.myCards.appendChild(btn);
-    });
+    // ไพ่ในมือ
+    renderHand(state.myCards, myTurn && g.phase === 'idle');
+    const me = players.find(p => p.id === myId);
+    ui.dealInfo.innerText = g.phase === 'over' || !me || me.hp <= 0 ? '' : `🎴 แจกการ์ดรอบหน้าอีก ${g.dealIn} เทิร์น`;
 
     // โต๊ะกลาง
     const c = g.crosses;
@@ -354,10 +368,11 @@ function renderGame(state) {
 // ==========================================
 // 5. การกระทำของผู้เล่น (ส่งไปให้เซิร์ฟเวอร์ตัดสิน)
 // ==========================================
-function startNormalTurn() { socket.emit('startTurn', { cardIndex: null }); }
-function startSkillTurn(index) {
+function startNormalTurn() { socket.emit('startTurn'); }
+function playCard(index, el) {
     if (!isMyTurn() || currentRoom.game.phase !== 'idle') return;
-    socket.emit('startTurn', { cardIndex: index });
+    if (el) el.classList.add('playing');
+    socket.emit('useCard', index);
 }
 
 ui.input.addEventListener("input", () => {
@@ -475,6 +490,8 @@ const Sound = (() => {
         tick() { if (!enabled) return; tone(660, 0.12, 0.05); },                                // ระฆังเบาๆ
         spin() { if (!enabled) return; noise(1.7, 400, 0.12, 0, 'bandpass', 1800); },           // ลมกระซิบหมุนวน
         win() { if (!enabled) return; [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, 0.12, 'triangle', i * 0.14)); },
+        card() { if (!enabled) return; noise(0.14, 5000, 0.22, 0, 'highpass', 2000); tone(880, 0.12, 0.06, 'triangle', 0.05); },
+        deal(n) { if (!enabled) return; for (let i = 0; i < n; i++) noise(0.1, 4000, 0.18, i * 0.14, 'highpass', 1500); },
         bang() { if (!enabled) return; wail(0.35); tone(55, 0.6, 0.45); noise(0.5, 3000, 0.15, 0, 'highpass', 800); } // BOO!
     };
 })();
@@ -566,4 +583,58 @@ function playAgain() {
 function goHomeFromResults() {
     hideResults();
     leaveRoom();
+}
+
+// ==========================================
+// 10. ไพ่ในมือ (สไตล์เกมไพ่)
+// ==========================================
+let lastHand = [];
+
+function cardHTML(id) {
+    const c = cardsData[id];
+    return `<div class="pc-tier">${c.tier.toUpperCase()}</div>
+        <div class="pc-emoji">${c.emoji}</div>
+        <div class="pc-title">${c.title}</div>
+        <div class="pc-desc">${c.desc}</div>`;
+}
+
+function renderHand(cards, canPlay) {
+    const n = cards.length;
+    // การ์ดที่เพิ่งได้ (ต่อท้ายมือ) จะมีแอนิเมชันแจกไพ่
+    const sameStart = lastHand.every((c, i) => cards[i] === c);
+    const newFrom = sameStart && n > lastHand.length ? lastHand.length : n;
+    ui.hand.innerHTML = '';
+    ui.hand.classList.toggle('playable', canPlay);
+    cards.forEach((id, i) => {
+        const off = i - (n - 1) / 2;
+        const el = document.createElement('div');
+        el.className = `play-card tier-${cardsData[id].tier}` + (i >= newFrom ? ' dealt' : '');
+        el.style.setProperty('--x', `${off * 52}px`);
+        el.style.setProperty('--y', `${off * off * 4}px`);
+        el.style.setProperty('--r', `${off * 7}deg`);
+        el.style.zIndex = i + 1;
+        el.innerHTML = cardHTML(id);
+        el.onclick = () => playCard(i, el);
+        ui.hand.appendChild(el);
+    });
+    lastHand = cards.slice();
+}
+
+// ไพ่หลังบินจากกลางกระดานไปหาผู้เล่น
+function flyCardTo(playerId, delay) {
+    const slot = playerId === myId ? null : document.querySelector(`.player[data-pid="${CSS.escape(playerId)}"]`);
+    if (playerId !== myId && !slot) return;
+    const bw = ui.board.offsetWidth, bh = ui.board.offsetHeight;
+    const from = { x: bw / 2, y: bh * 0.47 };
+    const to = slot
+        ? { x: slot.offsetLeft + slot.offsetWidth / 2, y: slot.offsetTop + slot.offsetHeight / 2 }
+        : { x: ui.hand.offsetLeft, y: bh - 100 };
+    const card = document.createElement('div');
+    card.className = 'fly-card';
+    ui.board.appendChild(card);
+    card.animate([
+        { transform: `translate(${from.x - 42}px, ${from.y - 60}px) scale(0.7) rotate(0deg)`, opacity: 0 },
+        { opacity: 1, offset: 0.15 },
+        { transform: `translate(${to.x - 42}px, ${to.y - 60}px) scale(0.4) rotate(540deg)`, opacity: 0.2 }
+    ], { duration: 750, delay, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'both' }).onfinish = () => card.remove();
 }
