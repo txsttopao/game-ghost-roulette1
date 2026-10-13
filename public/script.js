@@ -125,8 +125,10 @@ socket.on('shotResult', ({ targetId, real }) => {
     if (real) {
         Sound.bang();
         showBanner('BOO!', 'bang');
-        restartAnim(ui.flash, 'bang');
-        restartAnim(ui.board, 'shake');
+        if (Settings.get('shake')) {
+            restartAnim(ui.flash, 'bang');
+            restartAnim(ui.board, 'shake');
+        }
         if (el) restartAnim(el, 'hit');
     } else {
         Sound.click();
@@ -432,11 +434,17 @@ fitBoard();
 // 7. เสียง (สังเคราะห์ด้วย Web Audio ไม่ต้องใช้ไฟล์)
 // ==========================================
 const Sound = (() => {
-    let ctx = null;
+    let ctx = null, master = null;
     let enabled = localStorage.getItem('ghostSound') !== 'off';
+    let volume = Number(localStorage.getItem('ghostVolume') ?? 0.8);
 
     function ac() {
-        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!ctx) {
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+            master = ctx.createGain();
+            master.gain.value = volume;
+            master.connect(ctx.destination);
+        }
         if (ctx.state === 'suspended') ctx.resume();
         return ctx;
     }
@@ -454,7 +462,7 @@ const Sound = (() => {
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(gain, t + duration * 0.3);
         g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-        src.connect(filter).connect(g).connect(a.destination);
+        src.connect(filter).connect(g).connect(master);
         src.start(t);
     }
     function tone(freq, duration, gain, type = 'sine', when = 0) {
@@ -463,7 +471,7 @@ const Sound = (() => {
         const g = a.createGain();
         g.gain.setValueAtTime(gain, t);
         g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-        o.connect(g).connect(a.destination);
+        o.connect(g).connect(master);
         o.start(t); o.stop(t + duration);
     }
     // เสียงผีโหยหวน: ความถี่ขึ้นแล้วลง + สั่นแบบ vibrato
@@ -480,12 +488,14 @@ const Sound = (() => {
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(gain, t + 0.12);
         g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
-        o.connect(g).connect(a.destination);
+        o.connect(g).connect(master);
         o.start(t); lfo.start(t); o.stop(t + 1.4); lfo.stop(t + 1.4);
     }
     return {
         get enabled() { return enabled; },
         set enabled(v) { enabled = v; localStorage.setItem('ghostSound', v ? 'on' : 'off'); },
+        get volume() { return volume; },
+        set volume(v) { volume = v; localStorage.setItem('ghostVolume', v); if (master) master.gain.value = v; },
         click() { if (!enabled) return; noise(0.35, 900, 0.18, 0, 'lowpass', 200); },          // พรึ่บ... ควันจาง
         tick() { if (!enabled) return; tone(660, 0.12, 0.05); },                                // ระฆังเบาๆ
         spin() { if (!enabled) return; noise(1.7, 400, 0.12, 0, 'bandpass', 1800); },           // ลมกระซิบหมุนวน
@@ -498,10 +508,15 @@ const Sound = (() => {
 
 function toggleSound() {
     Sound.enabled = !Sound.enabled;
-    document.getElementById('sound-toggle').innerText = Sound.enabled ? '🔊' : '🔇';
+    syncSoundButton();
     if (Sound.enabled) Sound.click();
 }
-document.getElementById('sound-toggle').innerText = Sound.enabled ? '🔊' : '🔇';
+function syncSoundButton() {
+    document.getElementById('sound-toggle').innerText = Sound.enabled ? '🔊' : '🔇';
+    const box = document.getElementById('set-sound');
+    if (box) box.checked = Sound.enabled;
+}
+syncSoundButton();
 
 // ==========================================
 // 8. หน้าต่างกติกา
@@ -638,3 +653,50 @@ function flyCardTo(playerId, delay) {
         { transform: `translate(${to.x - 42}px, ${to.y - 60}px) scale(0.4) rotate(540deg)`, opacity: 0.2 }
     ], { duration: 750, delay, easing: 'cubic-bezier(0.4, 0, 0.6, 1)', fill: 'both' }).onfinish = () => card.remove();
 }
+
+// ==========================================
+// 11. หน้าตั้งค่า (SETTING) — จำไว้ในเครื่อง
+// ==========================================
+const Settings = (() => {
+    const defaults = { shake: true, bgAnim: true };
+    const saved = JSON.parse(localStorage.getItem('ghostSettings') || '{}');
+    const data = { ...defaults, ...saved };
+    return {
+        get: k => data[k],
+        set(k, v) { data[k] = v; localStorage.setItem('ghostSettings', JSON.stringify(data)); applySettings(); },
+        reset() { Object.assign(data, defaults); localStorage.removeItem('ghostSettings'); applySettings(); }
+    };
+})();
+
+function applySettings() {
+    document.body.classList.toggle('no-bg-anim', !Settings.get('bgAnim'));
+}
+applySettings();
+
+function openSettings() {
+    document.getElementById('set-name').value = localStorage.getItem('ghostPlayerName') || '';
+    document.getElementById('set-sound').checked = Sound.enabled;
+    document.getElementById('set-volume').value = Math.round(Sound.volume * 100);
+    document.getElementById('set-volume-label').innerText = `${Math.round(Sound.volume * 100)}%`;
+    document.getElementById('set-shake').checked = Settings.get('shake');
+    document.getElementById('set-bganim').checked = Settings.get('bgAnim');
+    document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+
+function setPlayerNameSetting(value) {
+    const name = value.trim().slice(0, 16);
+    if (name) localStorage.setItem('ghostPlayerName', name); else localStorage.removeItem('ghostPlayerName');
+    ['join-player-name', 'create-player-name'].forEach(id => { document.getElementById(id).value = name; });
+}
+function setSoundSetting(on) { Sound.enabled = on; syncSoundButton(); if (on) Sound.click(); }
+function setVolumeSetting(percent) {
+    Sound.volume = percent / 100;
+    document.getElementById('set-volume-label').innerText = `${percent}%`;
+}
+function resetSettings() {
+    Settings.reset();
+    Sound.enabled = true; Sound.volume = 0.8; syncSoundButton();
+    openSettings();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });

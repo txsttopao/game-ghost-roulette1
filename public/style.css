@@ -642,3 +642,40 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; }
 .reveal-caption { font-weight: 800; font-size: 18px; color: #fff; text-shadow: 0 0 10px var(--ecto), 0 2px 4px #000; }
 
 .shot-banner.deal { color: #f5c36b; font-size: 70px; text-shadow: 0 0 24px rgba(245,195,107,0.8), 0 4px 0 #3a2208; animation: banner 1.2s ease-out; }
+
+/* ========================================== */
+/* SETTINGS */
+/* ========================================== */
+.settings-modal { width: min(520px, 92vw); }
+.settings-body { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.set-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(125,255,207,0.12); border-radius: 12px; padding: 10px 14px;
+}
+.set-label { font-weight: 600; display: flex; flex-direction: column; }
+.set-label small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.set-label b { color: var(--ecto); }
+.set-input { width: 180px; margin: 0; font-size: 15px; padding: 8px 12px; }
+.set-volume { display: flex; align-items: center; gap: 8px; }
+.set-volume input[type=range] { width: 140px; accent-color: var(--ecto); }
+.set-test { margin: 0; padding: 6px 12px; font-size: 13px; }
+.settings-actions { display: flex; justify-content: center; gap: 14px; }
+.settings-actions button { margin: 0; padding: 10px 22px; font-size: 16px; }
+
+/* สวิตช์เปิด/ปิด */
+.switch { position: relative; width: 52px; height: 28px; flex-shrink: 0; cursor: pointer; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch span {
+    position: absolute; inset: 0; border-radius: 14px; background: #2a2238; border: 1px solid rgba(255,255,255,0.15);
+    transition: background 0.2s;
+}
+.switch span::before {
+    content: ''; position: absolute; width: 22px; height: 22px; left: 2px; top: 2px; border-radius: 50%;
+    background: #9a90b0; transition: transform 0.2s, background 0.2s;
+}
+.switch input:checked + span { background: #1f7a5e; border-color: var(--ecto); box-shadow: 0 0 10px rgba(125,255,207,0.4); }
+.switch input:checked + span::before { transform: translateX(24px); background: #eafff7; }
+
+/* ปิดแอนิเมชันพื้นหลัง */
+.no-bg-anim .fog, .no-bg-anim .menu-cylinder, .no-bg-anim .title-text { animation: none !important; }
+.no-bg-anim .menu-ghosts { display: none; }

@@ -58,7 +58,46 @@
             <button onclick="showScreen('join-room-screen'); renderRooms();">JOIN ROOM</button>
             <button onclick="showScreen('create-room-screen')">CREATE ROOM</button>
             <button onclick="openRules()">Rule</button>
-            <button>SETTING</button>
+            <button onclick="openSettings()">SETTING</button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- หน้าต่างตั้งค่า (SETTING) -->
+    <!-- ========================================== -->
+    <div id="settings-modal" class="modal-backdrop hidden" onclick="if (event.target === this) closeSettings()">
+        <div class="modal settings-modal">
+            <button class="modal-close" onclick="closeSettings()" title="ปิด">✕</button>
+            <h2 class="modal-title">SETTING</h2>
+            <div class="settings-body">
+                <div class="set-row">
+                    <div class="set-label">👤 ชื่อผู้เล่น<small>ใช้เป็นชื่อเริ่มต้นตอนสร้าง/เข้าห้อง</small></div>
+                    <input type="text" id="set-name" class="create-input set-input" maxlength="16" placeholder="YOUR NAME" oninput="setPlayerNameSetting(this.value)">
+                </div>
+                <div class="set-row">
+                    <div class="set-label">🔊 เสียง<small>เสียงผี การ์ด และเอฟเฟกต์ทั้งหมด</small></div>
+                    <label class="switch"><input type="checkbox" id="set-sound" onchange="setSoundSetting(this.checked)"><span></span></label>
+                </div>
+                <div class="set-row">
+                    <div class="set-label">🎚️ ระดับเสียง <b id="set-volume-label">80%</b></div>
+                    <div class="set-volume">
+                        <input type="range" id="set-volume" min="0" max="100" step="5" oninput="setVolumeSetting(Number(this.value))">
+                        <button class="set-test" onclick="Sound.bang()">ลองฟัง</button>
+                    </div>
+                </div>
+                <div class="set-row">
+                    <div class="set-label">💥 จอสั่น & แฟลช<small>ตอนมีคนโดนวิญญาณร้าย (ปิดถ้าเวียนหัว)</small></div>
+                    <label class="switch"><input type="checkbox" id="set-shake" onchange="Settings.set('shake', this.checked)"><span></span></label>
+                </div>
+                <div class="set-row">
+                    <div class="set-label">✨ แอนิเมชันพื้นหลัง<small>หมอกและผีลอย (ปิดถ้าเครื่องช้า)</small></div>
+                    <label class="switch"><input type="checkbox" id="set-bganim" onchange="Settings.set('bgAnim', this.checked)"><span></span></label>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn-home" onclick="resetSettings()">↺ คืนค่าเริ่มต้น</button>
+                <button class="btn-again" onclick="closeSettings()">✔ เสร็จ</button>
+            </div>
         </div>
     </div>
 
