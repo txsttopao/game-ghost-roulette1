@@ -101,7 +101,7 @@ function viewFor(room, playerId) {
             timeLeft: g.timeLeft,
             typing: g.typing,
             message: g.message,
-            crosses: { realLeft: 3 - g.realThrown, fakeLeft: 2 - g.fakeThrown, total: 5, thrown: g.thrown, fired: g.fired, reloads: g.reloads },
+            crosses: { realLeft: g.realTotal - g.realThrown, fakeLeft: g.fakeTotal - g.fakeThrown, total: g.realTotal + g.fakeTotal, thrown: g.thrown, fired: g.fired, reloads: g.reloads },
             gameNo: g.gameNo,
             dealIn: room.players.filter(p => p.hp > 0 && !g.roundPlayed.has(p.id)).length,
             results: g.results || null
@@ -189,23 +189,29 @@ function schedule(room, fn, ms) {
     g.timeout = setTimeout(() => { if (room.game === g) fn(room); }, ms);
 }
 
-function refillAndShuffleCrosses(g) {
-    const pool = ['real', 'real', 'real', 'fake', 'fake'];
+// วงเวทมี 5 ดวงเสมอ แต่สุ่มจำนวนวิญญาณร้ายใหม่ทุกครั้ง (1–4 ดวง ที่เหลือเป็นเงาลวง)
+const CROSS_SLOTS = 5;
+function refillAndShuffleCrosses(room) {
+    const g = room.game;
+    const real = 1 + Math.floor(Math.random() * (CROSS_SLOTS - 1));
+    const pool = [...Array(real).fill('real'), ...Array(CROSS_SLOTS - real).fill('fake')];
     for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     g.crossPool = pool;
+    g.realTotal = real; g.fakeTotal = CROSS_SLOTS - real;
     g.thrown = 0; g.realThrown = 0; g.fakeThrown = 0;
     g.fired = [];                       // ผลของวิญญาณแต่ละดวงในวงเวทที่ปล่อยไปแล้ว
     g.reloads = (g.reloads ?? -1) + 1;  // ให้ client หมุนวงเวทไปข้างหน้าตลอด
+    addLog(room, 'lReload', { real, fake: CROSS_SLOTS - real });
 }
 
 function startGame(room) {
     room.status = 'playing';
     room.players.forEach(p => { p.hp = 3; p.cards = []; });
     room.game = {
-        crossPool: [], thrown: 0, realThrown: 0, fakeThrown: 0,
+        crossPool: [], thrown: 0, realThrown: 0, fakeThrown: 0, realTotal: 0, fakeTotal: 0,
         turnIndex: 0, skipNextTurn: false,
         effects: { doubleDamage: false, inverted: false },
         phase: 'busy', letter: '?', timeLeft: 0, typing: '', message: null,
@@ -213,9 +219,9 @@ function startGame(room) {
         gameNo: nextGameNo++, eliminated: [], stats: {}, results: null, roundPlayed: new Set(),
         timeout: null, interval: null
     };
-    refillAndShuffleCrosses(room.game);
     io.to(room.id).emit('gameStarted');
     addLog(room, 'lNewGame');
+    refillAndShuffleCrosses(room);
     beginTurn(room);
     broadcastRoomList();
 }
@@ -302,6 +308,8 @@ function beginTurn(room, extraTurn = false) {
     // ผลการ์ด 🩸 กับ 🗡️ ใช้ได้แค่เทิร์นของคนที่ใช้
     g.effects.doubleDamage = false; g.effects.inverted = false;
     g.botPeek = null; g.botCardsThisTurn = 0;
+    // วงเวทว่าง: เติมใหม่ตอนต้นเทิร์น ให้ทุกคนเห็นจำนวนร้าย/ลวงก่อนตัดสินใจ
+    if (g.crossPool.length === 0) refillAndShuffleCrosses(room);
 
     if (room.players.every(p => p.hp <= 0 || g.roundPlayed.has(p.id))) dealRound(room);
     g.roundPlayed.add(cur.id);
@@ -418,7 +426,7 @@ function failTurn(room, reason) {
 function applySkillEffect(room, playerIdx, cardId) {
     const g = room.game;
     const p = room.players[playerIdx];
-    if (g.crossPool.length === 0) refillAndShuffleCrosses(g);
+    if (g.crossPool.length === 0) refillAndShuffleCrosses(room);
 
     addLog(room, 'lUsedCard', { p: P(p), card: CARD(cardId) });
 
@@ -462,7 +470,7 @@ function attackTarget(room, targetIdx) {
     const me = room.players[g.turnIndex];
     const target = room.players[targetIdx];
     clearTimers(g);
-    if (g.crossPool.length === 0) refillAndShuffleCrosses(g);
+    if (g.crossPool.length === 0) refillAndShuffleCrosses(room);
 
     const isSelf = targetIdx === g.turnIndex;
     const tRef = isSelf ? '@self' : P(target);

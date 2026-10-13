@@ -69,6 +69,7 @@ const STR = {
         effStake: '🗡️ การสาปเทิร์นนี้ ถ้าเป็นวิญญาณร้ายทำดาเมจ x2!',
 
         lNewGame: '<span class="log-sys">-- เริ่มเกมใหม่ --</span>',
+        lReload: '<span class="log-sys">🔮 วงเวทใหม่: <span class="log-real">ร้าย {real}</span> · <span class="log-fake">ลวง {fake}</span></span>',
         lWin: '<span class="log-sys">🎉 จบเกม! {p} ชนะ!</span>', lDraw: '<span class="log-sys">👻 กลายเป็นผีกันหมด! เสมอกัน!</span>',
         lDeal: '<span class="log-sys">🎴 ครบ 1 รอบ! แจกการ์ดคนละ 1 ใบ</span>',
         lAfk: '<span class="log-sys">⌛ {p} ไม่กดเริ่มเทิร์น ข้ามเทิร์น</span>',
@@ -158,6 +159,7 @@ const STR = {
         effStake: '🗡️ Your curse this turn deals x2 if it is evil!',
 
         lNewGame: '<span class="log-sys">-- New game --</span>',
+        lReload: '<span class="log-sys">🔮 New circle: <span class="log-real">{real} evil</span> · <span class="log-fake">{fake} decoy</span></span>',
         lWin: '<span class="log-sys">🎉 Game over! {p} wins!</span>', lDraw: '<span class="log-sys">👻 Everyone became a ghost! Draw!</span>',
         lDeal: '<span class="log-sys">🎴 Round complete! 1 card dealt to each player</span>',
         lAfk: "<span class=\"log-sys\">⌛ {p} didn't start in time, turn skipped</span>",
