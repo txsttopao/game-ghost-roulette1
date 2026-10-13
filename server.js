@@ -115,6 +115,16 @@ function privateMsg(p, ...lines) { if (p.connected && !p.isBot) io.to(p.id).emit
 const humansIn = room => room.players.filter(p => p.connected && !p.isBot);
 function addLog(room, k, p) { io.to(room.id).emit('log', M(k, p)); }
 
+// ---- แชทในห้อง ----
+const CHAT_MAX = 200;        // ความยาวข้อความสูงสุด
+const CHAT_HISTORY = 50;     // เก็บข้อความล่าสุดไว้ให้คนที่เข้ามาทีหลัง
+const CHAT_COOLDOWN = 600;   // กันสแปม (ms)
+function pushChat(room, entry) {
+    room.chat.push(entry);
+    if (room.chat.length > CHAT_HISTORY) room.chat.shift();
+    io.to(room.id).emit('chat', entry);
+}
+
 function addPlayer(room, socket, playerName) {
     const base = cleanName(playerName, `Ghost${Math.floor(100 + Math.random() * 900)}`, 16);
     let name = base, n = 2;
@@ -122,6 +132,8 @@ function addPlayer(room, socket, playerName) {
     room.players.push({ id: socket.id, name, hp: 3, cards: [], connected: true });
     socket.join(room.id);
     socket.data.roomId = room.id;
+    socket.emit('chatHistory', room.chat);
+    pushChat(room, { sys: M('cJoin', { p: { pid: socket.id, name } }), ts: Date.now() });
     sendRoomState(room);
     broadcastRoomList();
 }
@@ -133,6 +145,7 @@ function leaveCurrentRoom(socket) {
     socket.leave(room.id);
     const idx = room.players.findIndex(p => p.id === socket.id);
     if (idx === -1) return;
+    const leaver = room.players[idx];
 
     if (room.status === 'waiting') room.players.splice(idx, 1);
     else handleInGameLeave(room, idx);
@@ -144,6 +157,7 @@ function leaveCurrentRoom(socket) {
         rooms.delete(room.id);
     } else {
         if (room.hostId === socket.id) room.hostId = remaining[0].id;
+        pushChat(room, { sys: M('cLeave', { p: P(leaver) }), ts: Date.now() });
         sendRoomState(room);
     }
     broadcastRoomList();
@@ -621,7 +635,7 @@ io.on('connection', socket => {
         const size = ROOM_SIZES.includes(Number(max)) ? Number(max) : 3;
         const room = {
             id: String(nextRoomId++), name: cleanName(roomName, 'MY ROOM', 20), max: size,
-            hostId: socket.id, status: 'waiting', players: [], game: null
+            hostId: socket.id, status: 'waiting', players: [], game: null, chat: []
         };
         rooms.set(room.id, room);
         addPlayer(room, socket, playerName);
@@ -638,6 +652,17 @@ io.on('connection', socket => {
     });
 
     // หน้าสรุปผล -> กด "เล่นอีกครั้ง": พาทั้งห้องกลับห้องรอ
+    socket.on('chat', raw => {
+        const room = myRoom();
+        if (!room) return;
+        const me = room.players.find(p => p.id === socket.id);
+        const text = String(raw ?? '').replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX);
+        const now = Date.now();
+        if (!me || !text || now - (socket.data.lastChat || 0) < CHAT_COOLDOWN) return;
+        socket.data.lastChat = now;
+        pushChat(room, { pid: me.id, name: me.name, text, ts: now });
+    });
+
     socket.on('playAgain', () => {
         const room = myRoom();
         if (!room) return;

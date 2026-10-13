@@ -51,6 +51,7 @@ socket.on('connect', () => { myId = socket.id; showOffline(false); });
 socket.on('connect_error', () => showOffline(true));
 
 socket.on('disconnect', () => {
+    resetChat();
     showOffline(true);
     currentRoom = null;
     showScreen('main-menu-screen');
@@ -71,6 +72,7 @@ socket.on('roomList', list => {
 
 socket.on('roomState', state => {
     currentRoom = state;
+    document.getElementById('chat-toggle').classList.remove('hidden');
     updateResults(state);
     if (state.status === 'waiting') {
         renderLobby(state);
@@ -218,6 +220,7 @@ function joinRoom(roomId) {
 }
 
 function leaveRoom() {
+    resetChat();
     socket.emit('leaveRoom');
     currentRoom = null;
     showScreen('main-menu-screen');
@@ -737,7 +740,114 @@ function setLang(newLang) {
         if (currentRoom.status === 'waiting') renderLobby(currentRoom); else renderGame(currentRoom);
     }
     renderLog();
+    renderChat();
     if (lastResults && !document.getElementById('results-modal').classList.contains('hidden')) showResults(lastResults);
 }
 function toggleLang() { setLang(lang === 'th' ? 'en' : 'th'); }
 applyStaticI18n();
+
+// ==========================================
+// 13. แชทในห้อง
+// ==========================================
+let chatEntries = [];
+let chatUnread = 0;
+let chatOpen = localStorage.getItem('ghostChatOpen') === '1';
+const chatUI = {
+    toggle: document.getElementById('chat-toggle'),
+    badge: document.getElementById('chat-badge'),
+    panel: document.getElementById('chat-panel'),
+    list: document.getElementById('chat-messages'),
+    input: document.getElementById('chat-input')
+};
+
+socket.on('chatHistory', list => { chatEntries = list.slice(); renderChat(); });
+socket.on('chat', entry => {
+    chatEntries.push(entry);
+    if (chatEntries.length > 50) chatEntries.shift();
+    appendChat(entry);
+    if (!chatOpen && entry.pid && entry.pid !== myId) {
+        chatUnread++;
+        updateChatBadge();
+        Sound.tick();
+    }
+});
+
+function chatLineEl(e) {
+    const div = document.createElement('div');
+    if (e.sys) {
+        div.className = 'chat-line sys';
+        div.textContent = tr(e.sys);
+        return div;
+    }
+    const mine = e.pid === myId;
+    div.className = 'chat-line' + (mine ? ' mine' : '');
+    const who = document.createElement('span');
+    who.className = 'chat-name';
+    who.textContent = mine ? t('you') : e.name;
+    const text = document.createElement('span');
+    text.className = 'chat-text';
+    text.textContent = e.text;
+    div.append(who, text);
+    return div;
+}
+
+function renderChat() {
+    chatUI.list.innerHTML = '';
+    if (!chatEntries.some(e => !e.sys)) {
+        const empty = document.createElement('div');
+        empty.className = 'chat-empty';
+        empty.textContent = t('chatEmpty');
+        chatUI.list.appendChild(empty);
+    }
+    chatEntries.forEach(e => chatUI.list.appendChild(chatLineEl(e)));
+    chatUI.list.scrollTop = chatUI.list.scrollHeight;
+}
+
+function appendChat(e) {
+    if (!e.sys) chatUI.list.querySelector('.chat-empty')?.remove();
+    chatUI.list.appendChild(chatLineEl(e));
+    chatUI.list.scrollTop = chatUI.list.scrollHeight;
+}
+
+function updateChatBadge() {
+    chatUI.badge.textContent = chatUnread > 9 ? '9+' : chatUnread;
+    chatUI.badge.classList.toggle('hidden', chatUnread === 0 || chatOpen);
+}
+
+function setChatOpen(open) {
+    chatOpen = open;
+    localStorage.setItem('ghostChatOpen', open ? '1' : '0');
+    chatUI.panel.classList.toggle('hidden', !open);
+    chatUI.toggle.classList.toggle('active', open);
+    if (open) {
+        chatUnread = 0;
+        chatUI.list.scrollTop = chatUI.list.scrollHeight;
+        if (!isTouch) chatUI.input.focus();
+    }
+    updateChatBadge();
+}
+function toggleChat() { setChatOpen(!chatOpen); }
+
+function sendChat(text) {
+    text = (text ?? chatUI.input.value).trim();
+    if (!text) return;
+    socket.emit('chat', text);
+    if (text === chatUI.input.value.trim()) chatUI.input.value = '';
+}
+
+chatUI.input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); sendChat(); }
+    e.stopPropagation();   // พิมพ์แชทไม่ไปกวนปุ่มลัดอื่น
+});
+
+// ออกจากห้อง -> ซ่อนแชทและล้างข้อความ
+function resetChat() {
+    chatEntries = []; chatUnread = 0;
+    chatUI.list.innerHTML = '';
+    chatUI.toggle.classList.add('hidden');
+    chatUI.panel.classList.add('hidden');
+    updateChatBadge();
+}
+
+// เปิดแชทค้างไว้จากครั้งก่อน -> เปิดให้เลยตอนเข้าห้อง
+socket.on('chatHistory', () => { if (chatOpen) setChatOpen(true); });

@@ -17,6 +17,24 @@
     <div id="offline-banner" class="offline-banner hidden" data-i18n-html="offline"></div>
     <button id="lang-toggle" class="sound-toggle lang-toggle" onclick="toggleLang()" data-i18n-title="langTitle">TH</button>
     <button id="sound-toggle" class="sound-toggle" onclick="toggleSound()" data-i18n-title="soundTitle">🔊</button>
+    <button id="chat-toggle" class="sound-toggle chat-toggle hidden" onclick="toggleChat()" data-i18n-title="chatToggle">💬<span id="chat-badge" class="chat-badge hidden">0</span></button>
+
+    <!-- แชทในห้อง -->
+    <div id="chat-panel" class="chat-panel hidden">
+        <div class="chat-head">
+            <span data-i18n="chatTitle"></span>
+            <button class="chat-close" onclick="setChatOpen(false)" data-i18n-title="close">✕</button>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-quick">
+            <button onclick="sendChat('👻')">👻</button><button onclick="sendChat('😱')">😱</button><button onclick="sendChat('😂')">😂</button>
+            <button onclick="sendChat('👍')">👍</button><button onclick="sendChat('🔥')">🔥</button><button onclick="sendChat('🙏')">🙏</button>
+        </div>
+        <div class="chat-form">
+            <input type="text" id="chat-input" maxlength="200" autocomplete="off" data-i18n-ph="chatPh">
+            <button onclick="sendChat()" data-i18n="chatSend"></button>
+        </div>
+    </div>
 
     <!-- วงเวทอัญเชิญวิญญาณ (ใช้ซ้ำหลายที่) -->
     <svg width="0" height="0" style="position:absolute">
