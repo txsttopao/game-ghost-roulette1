@@ -15,11 +15,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
 const ROOM_SIZES = [3, 5];
-const TURN_SECONDS = 5;      // เวลาพิมพ์ศัพท์ (เท่าเกมเดิม)
+const TURN_SECONDS = 10;     // เวลาพิมพ์ศัพท์
 const GRACE_MS = 500;        // เผื่อดีเลย์เน็ต
 const IDLE_MS = 30000;       // ไม่กดเริ่มเทิร์นภายในเวลานี้ = ข้ามเทิร์น
 const TARGET_MS = 15000;     // ไม่เลือกเป้าหมายภายในเวลานี้ = สุ่มเป้าให้
-const RESET_MS = 8000;       // จบเกมแล้วกลับห้องรอ
+const RESET_MS = 60000;      // จบเกมแล้วไม่มีใครกด "เล่นอีกครั้ง" ภายในเวลานี้ = กลับห้องรอเอง
 
 // ==========================================
 // 1. พจนานุกรม (โหลดที่เซิร์ฟเวอร์)
@@ -73,6 +73,7 @@ function pTag(p) { return `<span class="log-p-enemy" data-pid="${p.id}">${escape
 // ==========================================
 const rooms = new Map();
 let nextRoomId = 1;
+let nextGameNo = 1;
 
 function roomList() {
     return [...rooms.values()].map(r => ({
@@ -97,7 +98,9 @@ function viewFor(room, playerId) {
             timeLeft: g.timeLeft,
             typing: g.typing,
             message: g.message,
-            crosses: { realLeft: 3 - g.realThrown, fakeLeft: 2 - g.fakeThrown, total: 5, thrown: g.thrown, fired: g.fired, reloads: g.reloads }
+            crosses: { realLeft: 3 - g.realThrown, fakeLeft: 2 - g.fakeThrown, total: 5, thrown: g.thrown, fired: g.fired, reloads: g.reloads },
+            gameNo: g.gameNo,
+            results: g.results || null
         } : null
     };
 }
@@ -187,6 +190,7 @@ function startGame(room) {
         effects: { doubleDamage: false, inverted: false, skipStabPhase: false },
         phase: 'busy', letter: '?', timeLeft: 0, typing: '', message: '',
         usedWords: new Set(), isSkillMode: false, cardIndex: -1, word: '',
+        gameNo: nextGameNo++, eliminated: [], stats: {}, results: null,
         timeout: null, interval: null
     };
     refillAndShuffleCrosses(room.game);
@@ -194,6 +198,26 @@ function startGame(room) {
     addLog(room, `<span class="log-sys">-- เริ่มเกมใหม่ --</span>`);
     beginTurn(room);
     broadcastRoomList();
+}
+
+function markEliminated(g, p) {
+    if (!g.eliminated.includes(p.id)) g.eliminated.push(p.id);
+}
+
+// อันดับ: คนรอด = ที่ 1, ที่เหลือเรียงจากคนที่ตายทีหลังสุด
+function buildResults(room, winner) {
+    const g = room.game;
+    const order = [...(winner ? [winner.id] : []), ...[...g.eliminated].reverse()];
+    room.players.forEach(p => { if (!order.includes(p.id)) order.push(p.id); });
+    return order.map((id, i) => {
+        const p = room.players.find(x => x.id === id);
+        const st = g.stats[id] || { words: 0, longest: '' };
+        return {
+            id, name: p.name, rank: i + 1, avatar: room.players.indexOf(p),
+            status: winner && id === winner.id ? 'winner' : (p.connected ? 'ghost' : 'left'),
+            words: st.words, longest: st.longest
+        };
+    });
 }
 
 function checkGameOver(room) {
@@ -211,7 +235,7 @@ function checkGameOver(room) {
         g.message = `👻 กลายเป็นผีกันหมด! เสมอกัน! 👻`;
         addLog(room, `<span class="log-sys">👻 กลายเป็นผีกันหมด! เสมอกัน!</span>`);
     }
-    g.message += `\n(กลับห้องรอใน ${RESET_MS / 1000} วินาที)`;
+    g.results = buildResults(room, alive[0]);
     sendRoomState(room);
     g.timeout = setTimeout(() => { if (room.game === g) resetRoom(room); }, RESET_MS);
     return true;
@@ -292,6 +316,9 @@ function validateWord(room, rawWord) {
     if (word.length < 3) return failTurn(room, "ศัพท์ต้องยาว 3 ตัวอักษรขึ้นไป");
 
     g.usedWords.add(word);
+    const st = g.stats[me.id] ||= { words: 0, longest: '' };
+    st.words++;
+    if (word.length > st.longest.length) st.longest = word;
     g.word = word;
     g.typing = word;
     let successMsg = "เยี่ยมมาก! ได้สิทธิ์ปล่อยวิญญาณ";
@@ -415,6 +442,7 @@ function attackTarget(room, targetIdx) {
         if (isReal) {
             dmg = g.effects.doubleDamage ? 2 : 1;
             target.hp = Math.max(0, target.hp - dmg);
+            if (target.hp === 0) markEliminated(g, target);
             g.message = `👻 BOO! วิญญาณร้าย! ${targetName} โดนไป ${dmg} ดาเมจ`;
             addLog(room, `- <span class="log-real">👻 BOO! วิญญาณร้าย</span> ทำดาเมจ ${dmg}`);
         } else {
@@ -434,8 +462,9 @@ function attackTarget(room, targetIdx) {
 function handleInGameLeave(room, idx) {
     const g = room.game;
     const p = room.players[idx];
+    if (g.phase === 'over') { p.connected = false; return; }
+    if (p.hp > 0) markEliminated(g, p);
     p.connected = false; p.hp = 0; p.cards = [];
-    if (g.phase === 'over') return;
     addLog(room, `<span class="log-sys">🚪 ${pTag(p)} ออกจากเกม</span>`);
     if (checkGameOver(room)) return;
     if (g.turnIndex === idx) {
@@ -484,6 +513,14 @@ io.on('connection', socket => {
         if (room.players.length >= room.max) return err('ห้องเต็มแล้ว');
         leaveCurrentRoom(socket);
         addPlayer(room, socket, playerName);
+    });
+
+    // หน้าสรุปผล -> กด "เล่นอีกครั้ง": พาทั้งห้องกลับห้องรอ
+    socket.on('playAgain', () => {
+        const room = myRoom();
+        if (!room) return;
+        if (room.status === 'playing' && room.game.phase === 'over') resetRoom(room);
+        else sendRoomState(room);
     });
 
     socket.on('leaveRoom', () => {

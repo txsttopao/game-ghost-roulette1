@@ -13,7 +13,7 @@ let currentRoom = null;  // สถานะห้องที่เราอย�
 let lastPhaseKey = "";
 let createSize = 3;
 
-const TURN_SECONDS = 5;
+const TURN_SECONDS = 10;
 const avatars = ['👻', '🧛', '🧟', '💀', '🎃'];
 
 const cardsData = {
@@ -70,6 +70,7 @@ socket.on('roomList', list => {
 
 socket.on('roomState', state => {
     currentRoom = state;
+    updateResults(state);
     if (state.status === 'waiting') {
         renderLobby(state);
         showScreen('lobby-screen');
@@ -460,6 +461,7 @@ const Sound = (() => {
         click() { if (!enabled) return; noise(0.35, 900, 0.18, 0, 'lowpass', 200); },          // พรึ่บ... ควันจาง
         tick() { if (!enabled) return; tone(660, 0.12, 0.05); },                                // ระฆังเบาๆ
         spin() { if (!enabled) return; noise(1.7, 400, 0.12, 0, 'bandpass', 1800); },           // ลมกระซิบหมุนวน
+        win() { if (!enabled) return; [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, 0.12, 'triangle', i * 0.14)); },
         bang() { if (!enabled) return; wail(0.35); tone(55, 0.6, 0.45); noise(0.5, 3000, 0.15, 0, 'highpass', 800); } // BOO!
     };
 })();
@@ -477,3 +479,78 @@ document.getElementById('sound-toggle').innerText = Sound.enabled ? '🔊' : '�
 function openRules() { document.getElementById('rules-modal').classList.remove('hidden'); }
 function closeRules() { document.getElementById('rules-modal').classList.add('hidden'); }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRules(); });
+
+// ==========================================
+// 9. กระดานสรุปผลตอนจบเกม
+// ==========================================
+let resultsShownFor = 0;      // gameNo ที่เปิดกระดานไปแล้ว
+let resultsTimer = null;
+
+function updateResults(state) {
+    const g = state.game;
+    if (g && g.phase === 'over' && g.results && resultsShownFor !== g.gameNo) {
+        resultsShownFor = g.gameNo;
+        clearTimeout(resultsTimer);
+        resultsTimer = setTimeout(() => showResults(g.results), 1700);   // รอให้ BOO! เล่นจบก่อน
+    }
+    // เกมใหม่เริ่มแล้ว ปิดกระดานของตาที่แล้ว
+    if (g && g.phase !== 'over') hideResults();
+}
+
+function showResults(results) {
+    const medals = ['🥇', '🥈', '🥉'];
+    const winner = results.find(r => r.status === 'winner');
+    const me = results.find(r => r.id === myId);
+    document.getElementById('results-title').innerText = winner ? 'GAME OVER' : 'DRAW';
+    document.getElementById('results-sub').innerText = winner
+        ? (winner.id === myId ? '🎉 คุณรอดเป็นคนสุดท้าย! ชนะแล้ว! 🎉' : `👑 ${winner.name} รอดเป็นคนสุดท้าย`)
+        : '👻 กลายเป็นผีกันหมด เสมอกัน!';
+
+    // โพเดียม ที่ 2 - ที่ 1 - ที่ 3
+    const podium = document.getElementById('podium');
+    podium.innerHTML = '';
+    [1, 0, 2].forEach(i => {
+        const r = results[i];
+        if (!r) return;
+        const col = document.createElement('div');
+        col.className = `podium-col place-${r.rank}${r.id === myId ? ' is-me' : ''}`;
+        col.innerHTML = `
+            <div class="podium-avatar">${avatars[r.avatar % avatars.length]}</div>
+            <div class="podium-name"></div>
+            <div class="podium-block"><span class="podium-medal">${medals[i]}</span></div>`;
+        col.querySelector('.podium-name').innerText = r.name;
+        podium.appendChild(col);
+    });
+
+    // ตารางอันดับทุกคน
+    const list = document.getElementById('results-list');
+    list.innerHTML = '';
+    const statusText = { winner: '👑 ผู้รอดชีวิต', ghost: '👻 กลายเป็นผี', left: '🚪 ออกจากเกม' };
+    results.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'results-row' + (r.id === myId ? ' is-me' : '');
+        row.innerHTML = `<span class="rr-rank">${r.rank}</span><span class="rr-avatar">${avatars[r.avatar % avatars.length]}</span>
+            <span class="rr-name"></span><span class="rr-status">${statusText[r.status]}</span>
+            <span class="rr-stat">${r.words} คำ</span><span class="rr-stat rr-longest">${r.longest || '-'}</span>`;
+        row.querySelector('.rr-name').innerText = r.name + (r.id === myId ? ' (คุณ)' : '');
+        list.appendChild(row);
+    });
+
+    document.getElementById('results-modal').classList.remove('hidden');
+    if (me && me.status === 'winner') Sound.win(); else Sound.spin();
+}
+
+function hideResults() {
+    clearTimeout(resultsTimer);
+    document.getElementById('results-modal').classList.add('hidden');
+}
+
+function playAgain() {
+    hideResults();
+    socket.emit('playAgain');
+}
+
+function goHomeFromResults() {
+    hideResults();
+    leaveRoom();
+}

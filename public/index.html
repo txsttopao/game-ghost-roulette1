@@ -80,7 +80,7 @@
                     <h3>⌨️ เทิร์นของคุณ</h3>
                     <ol>
                         <li>กด <b>เริ่มเทิร์นของคุณ</b> (หรือกดการ์ดในมือเพื่อใช้สกิลในเทิร์นนี้)</li>
-                        <li>ระบบสุ่มตัวอักษรให้ 1 ตัว คุณมีเวลา <b>5 วินาที</b> พิมพ์ศัพท์อังกฤษที่ขึ้นต้นด้วยตัวนั้นแล้วกด <b>Enter</b></li>
+                        <li>ระบบสุ่มตัวอักษรให้ 1 ตัว คุณมีเวลา <b>10 วินาที</b> พิมพ์ศัพท์อังกฤษที่ขึ้นต้นด้วยตัวนั้นแล้วกด <b>Enter</b></li>
                         <li>คำต้องยาว <b>3 ตัวขึ้นไป</b> ต้องมีในพจนานุกรม และ<b>ห้ามซ้ำ</b>กับคำที่ใครในเกมใช้ไปแล้ว</li>
                         <li><b>พิมพ์ผ่าน</b> → ได้สิทธิ์ปล่อยวิญญาณ เลือกสาปใครก็ได้ รวมถึงสาปตัวเอง</li>
                         <li><b>พิมพ์พลาด / หมดเวลา</b> → เสียเทิร์น ไม่ได้สาป</li>
@@ -242,6 +242,22 @@
             <div id="log-content" class="log-content"></div>
         </div>
     </div>
+
+    <!-- กระดานสรุปผล -->
+    <div id="results-modal" class="modal-backdrop hidden">
+        <div class="modal results-modal">
+            <h2 class="modal-title" id="results-title">GAME OVER</h2>
+            <div class="results-sub" id="results-sub"></div>
+            <div class="podium" id="podium"></div>
+            <div class="results-head"><span>อันดับ</span><span>ผู้เล่น</span><span>สถานะ</span><span>คำที่ใช้</span><span>คำยาวสุด</span></div>
+            <div class="results-list" id="results-list"></div>
+            <div class="results-actions">
+                <button class="btn-home" onclick="goHomeFromResults()">🏠 กลับหน้าแรก</button>
+                <button class="btn-again" onclick="playAgain()">🔁 เล่นอีกครั้ง</button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // เปิดจากไฟล์ตรงๆ (file://) -> ไปโหลดจากเซิร์ฟเวอร์ที่ localhost:3000 แทน
