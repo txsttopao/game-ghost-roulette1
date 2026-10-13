@@ -15,9 +15,11 @@
     <div class="vignette"></div>
     <div id="flash" class="flash"></div>
     <div id="offline-banner" class="offline-banner hidden" data-i18n-html="offline"></div>
+    <div class="top-controls">
     <button id="lang-toggle" class="sound-toggle lang-toggle" onclick="toggleLang()" data-i18n-title="langTitle">TH</button>
-    <button id="sound-toggle" class="sound-toggle" onclick="toggleSound()" data-i18n-title="soundTitle">🔊</button>
-    <button id="chat-toggle" class="sound-toggle chat-toggle hidden" onclick="toggleChat()" data-i18n-title="chatToggle">💬<span id="chat-badge" class="chat-badge hidden">0</span></button>
+    <button id="sound-toggle" class="sound-toggle" onclick="toggleSound()" data-i18n-title="soundTitle"></button>
+    <button id="chat-toggle" class="sound-toggle chat-toggle hidden" onclick="toggleChat()" data-i18n-title="chatToggle"><span data-i18n="chatBtn"></span><span id="chat-badge" class="chat-badge hidden">0</span></button>
+    </div>
 
     <!-- แชทในห้อง -->
     <div id="chat-panel" class="chat-panel hidden">

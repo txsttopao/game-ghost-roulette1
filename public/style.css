@@ -44,11 +44,16 @@ body {
 .flash.bang { animation: flash 0.6s ease-out; }
 @keyframes flash { 0% { opacity: 0.9; } 100% { opacity: 0; } }
 
+/* ปุ่มมุมขวาบน (ภาษา / เสียง / แชท) */
+.top-controls { position: fixed; top: 14px; right: 14px; z-index: 60; display: flex; gap: 8px; align-items: center; }
 .sound-toggle {
-    position: fixed; top: 14px; right: 14px; z-index: 60;
-    width: 44px; height: 44px; padding: 0; border-radius: 50%;
-    font-size: 20px; background: var(--panel); border: 1px solid var(--line);
+    position: relative; margin: 0;
+    height: 40px; padding: 0 14px; border-radius: 20px; white-space: nowrap;
+    font-size: 13px; font-weight: 700; background: var(--panel); border: 1px solid var(--line);
 }
+.top-controls .chat-toggle { order: 0; }
+.top-controls .lang-toggle { order: 1; }
+.top-controls #sound-toggle { order: 2; }
 
 /* ========================================== */
 /* BUTTONS & INPUTS */
@@ -684,7 +689,7 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; }
 /* LANGUAGE */
 /* ========================================== */
 html[lang="th"] [data-lang="en"], html[lang="en"] [data-lang="th"] { display: none !important; }
-.lang-toggle { right: 66px; font-size: 13px; font-weight: 800; letter-spacing: 1px; }
+.lang-toggle { font-weight: 800; letter-spacing: 1px; }
 .lang-choices { display: flex; gap: 6px; }
 .lang-choice { margin: 0; padding: 6px 14px; font-size: 14px; background: #2a2238; box-shadow: none; border: 1px solid rgba(255,255,255,0.15); }
 .lang-choice.selected { background: #1f7a5e; border-color: var(--ecto); box-shadow: 0 0 10px rgba(125,255,207,0.4); }
@@ -698,8 +703,8 @@ button { touch-action: manipulation; }
 @media (max-width: 760px), (max-height: 520px) {
     body { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; align-items: stretch; }
     .screen-container { width: 100%; height: auto; min-height: 100dvh; padding: 64px 12px 28px; justify-content: center; }
-    .sound-toggle { position: absolute; width: 36px; height: 36px; font-size: 16px; top: 8px; right: 8px; }
-    .lang-toggle { right: 50px; font-size: 11px; }
+    .top-controls { position: absolute; top: 8px; right: 8px; gap: 6px; }
+    .sound-toggle { height: 34px; padding: 0 10px; font-size: 11px; }
     .back-btn { top: 10px; left: 10px; padding: 7px 12px; font-size: 14px; }
 
     /* เมนู */
@@ -812,7 +817,7 @@ button { touch-action: manipulation; }
 /* ========================================== */
 /* CHAT */
 /* ========================================== */
-.chat-toggle { right: 118px; font-size: 19px; }
+
 .chat-toggle.active { border-color: var(--ecto); box-shadow: 0 0 12px rgba(125,255,207,0.5); }
 .chat-badge {
     position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px;
@@ -846,7 +851,7 @@ button { touch-action: manipulation; }
 .chat-form button { margin: 0; padding: 8px 14px; font-size: 14px; }
 
 @media (max-width: 760px), (max-height: 520px) {
-    .chat-toggle { right: 92px; font-size: 16px; }
+
     .chat-panel {
         position: fixed; top: auto; bottom: 0; left: 0; right: 0; width: auto; height: 55dvh;
         border-radius: 16px 16px 0 0; border-bottom: none;

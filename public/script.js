@@ -524,7 +524,7 @@ function toggleSound() {
     if (Sound.enabled) Sound.click();
 }
 function syncSoundButton() {
-    document.getElementById('sound-toggle').innerText = Sound.enabled ? '🔊' : '🔇';
+    document.getElementById('sound-toggle').innerText = t(Sound.enabled ? 'soundOn' : 'soundOff');
     const box = document.getElementById('set-sound');
     if (box) box.checked = Sound.enabled;
 }
