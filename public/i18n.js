@@ -37,7 +37,7 @@ const STR = {
         curseSelf: 'สาปตัวเอง', curse: 'สาป {name}', usedCardCaption: '{name} ใช้การ์ด!',
         you: 'คุณ', youLog: 'คุณ', self: 'ตัวเอง',
         resWinMe: '🎉 คุณรอดเป็นคนสุดท้าย! ชนะแล้ว! 🎉', resWinOther: '👑 {name} รอดเป็นคนสุดท้าย', resDraw: '👻 กลายเป็นผีกันหมด เสมอกัน!',
-        stWinner: '👑 ผู้รอดชีวิต', stGhost: '👻 กลายเป็นผี', stLeft: '🚪 ออกจากเกม', words: '{n} คำ',
+        stWinner: '👑 ผู้รอดชีวิต', stGhost: '👻 กลายเป็นผี', stLeft: '🚪 ออกจากเกม', words: '{n} คำ', word1: '{n} คำ',
 
         // ---- ข้อความจากเซิร์ฟเวอร์ ----
         eNotFound: 'ไม่พบห้องนี้ (อาจถูกปิดไปแล้ว)', ePlaying: 'ห้องนี้กำลังเล่นอยู่', eFull: 'ห้องเต็มแล้ว',
@@ -115,7 +115,7 @@ const STR = {
         curseSelf: 'Curse yourself', curse: 'Curse {name}', usedCardCaption: '{name} played a card!',
         you: 'You', youLog: 'YOU', self: 'themselves',
         resWinMe: '🎉 You are the last one standing! You win! 🎉', resWinOther: '👑 {name} is the last one standing', resDraw: '👻 Everyone became a ghost. Draw!',
-        stWinner: '👑 Survivor', stGhost: '👻 Ghost', stLeft: '🚪 Left', words: '{n} words',
+        stWinner: '👑 Survivor', stGhost: '👻 Ghost', stLeft: '🚪 Left', words: '{n} words', word1: '{n} word',
 
         eNotFound: 'Room not found (it may have closed)', ePlaying: 'This room is already playing', eFull: 'The room is full',
         eNeedTwo: 'You need at least 2 players to start', eDict: 'The server is still loading the dictionary. Try again in a moment',
@@ -128,6 +128,11 @@ const STR = {
         mCastSelf: '{p} casts a curse on themselves...', mCast: '{p} casts a curse on {t}...',
         mReal: '👻 BOO! Evil spirit! {t} takes {dmg} damage', mFake: '💨 ...just a decoy! {t} survives',
         mLeftSkip: '{p} left the game — moving to the next player',
+        mTurnOfMe: 'Your turn', mTypingMe: 'You are typing a word starting with {letter}', mSkippedMe: '⛓️ You are skipped!',
+        mGameOverWinMe: '🎉 Game over! You are the last one standing! 🎉', mCastMe: 'You cast a curse on {t}...',
+        mCastSelfMe: 'You cast a curse on yourself...', mCastMeT: '{p} casts a curse on you...',
+        mRealMeT: '👻 BOO! Evil spirit! You take {dmg} damage', mFakeMeT: '💨 ...just a decoy! You survive',
+        lWinMe: '<span class="log-sys">🎉 Game over! {p} win!</span>', lSkippedMe: '<span class="log-sys">⛓️ {p} were skipped</span>',
 
         pYourTurnCards: 'Your turn! Play cards first if you like, then start your turn',
         pCardMore: 'Play another card, or start your turn', pCardStart: 'Start your turn now',
@@ -208,7 +213,11 @@ function tr(m, html = false) {
     if (!m) return '';
     if (typeof m === 'string') return html ? htmlEsc(m) : m;
     if (Array.isArray(m)) return m.map(x => tr(x, html)).join('\n');
-    const tpl = STR[lang][m.k] ?? STR.th[m.k] ?? m.k;
+    // ประโยคที่ต้องเปลี่ยนรูปเมื่อ "คุณ" เป็นผู้ทำ (Me) หรือเป็นเป้า (MeT) — มีแค่ภาษาอังกฤษ
+    const me = typeof myId !== 'undefined' ? myId : null;
+    const isMe = v => v && typeof v === 'object' && v.pid === me;
+    const variant = m.p && (isMe(m.p.p) ? m.k + 'Me' : isMe(m.p.t) ? m.k + 'MeT' : null);
+    const tpl = (variant && STR[lang][variant]) ?? STR[lang][m.k] ?? STR.th[m.k] ?? m.k;
     return tpl.replace(/\{(\w+)\}/g, (_, k) => fmtParam(m.p ? m.p[k] : undefined, html));
 }
 

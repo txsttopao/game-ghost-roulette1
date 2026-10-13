@@ -469,10 +469,10 @@ function attackTarget(room, targetIdx) {
             dmg = g.effects.doubleDamage ? 2 : 1;
             target.hp = Math.max(0, target.hp - dmg);
             if (target.hp === 0) markEliminated(g, target);
-            g.message = M('mReal', { t: tRef, dmg });
+            g.message = M('mReal', { t: P(target), dmg });
             addLog(room, 'lReal', { dmg });
         } else {
-            g.message = M('mFake', { t: tRef });
+            g.message = M('mFake', { t: P(target) });
             addLog(room, 'lFake');
         }
         g.effects.doubleDamage = false;

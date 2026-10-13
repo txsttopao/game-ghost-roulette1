@@ -427,11 +427,16 @@ function showBanner(text, cls) {
 }
 
 // ย่อกระดานให้พอดีจอเล็ก
+// จอแคบ/จอเตี้ย (มือถือ) ใช้เลย์เอาต์แนวตั้งจาก CSS แทนการย่อกระดาน
+const mobileMQ = window.matchMedia('(max-width: 760px), (max-height: 520px)');
+const isTouch = window.matchMedia('(hover: none)').matches;
 function fitBoard() {
+    if (mobileMQ.matches) { ui.board.style.transform = 'none'; return; }
     const scale = Math.min(1, (window.innerWidth - 20) / 980, (window.innerHeight - 20) / 780);
     ui.board.style.transform = `scale(${scale})`;
 }
 window.addEventListener('resize', fitBoard);
+mobileMQ.addEventListener('change', fitBoard);
 fitBoard();
 
 // ==========================================
@@ -581,7 +586,7 @@ function showResults(results) {
         row.className = 'results-row' + (r.id === myId ? ' is-me' : '');
         row.innerHTML = `<span class="rr-rank">${r.rank}</span><span class="rr-avatar">${avatars[r.avatar % avatars.length]}</span>
             <span class="rr-name"></span><span class="rr-status">${statusText[r.status]}</span>
-            <span class="rr-stat">${t('words', { n: r.words })}</span><span class="rr-stat rr-longest">${r.longest || '-'}</span>`;
+            <span class="rr-stat">${t(r.words === 1 ? 'word1' : 'words', { n: r.words })}</span><span class="rr-stat rr-longest">${r.longest || '-'}</span>`;
         row.querySelector('.rr-name').innerText = r.name + (r.id === myId ? ' ' + t('youTag') : '');
         list.appendChild(row);
     });
@@ -636,7 +641,15 @@ function renderHand(cards, canPlay) {
         el.style.setProperty('--r', `${off * 7}deg`);
         el.style.zIndex = i + 1;
         el.innerHTML = cardHTML(id);
-        el.onclick = () => playCard(i, el);
+        el.onclick = () => {
+            // จอสัมผัส: แตะครั้งแรก = ยกไพ่ขึ้นมาอ่าน, แตะซ้ำ = ใช้การ์ด
+            if (isTouch && !el.classList.contains('selected')) {
+                ui.hand.querySelectorAll('.selected').forEach(c => c.classList.remove('selected'));
+                el.classList.add('selected');
+                return;
+            }
+            playCard(i, el);
+        };
         ui.hand.appendChild(el);
     });
     lastHand = cards.slice();

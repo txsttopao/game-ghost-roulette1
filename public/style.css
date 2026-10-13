@@ -688,3 +688,123 @@ html[lang="th"] [data-lang="en"], html[lang="en"] [data-lang="th"] { display: no
 .lang-choices { display: flex; gap: 6px; }
 .lang-choice { margin: 0; padding: 6px 14px; font-size: 14px; background: #2a2238; box-shadow: none; border: 1px solid rgba(255,255,255,0.15); }
 .lang-choice.selected { background: #1f7a5e; border-color: var(--ecto); box-shadow: 0 0 10px rgba(125,255,207,0.4); }
+
+/* ========================================== */
+/* MOBILE (จอแคบ / จอเตี้ย) */
+/* ========================================== */
+button { touch-action: manipulation; }
+.hand .play-card.selected { transform: translateX(var(--x)) translateY(-30px) rotate(0deg) scale(1.12); z-index: 20 !important; filter: none; }
+
+@media (max-width: 760px), (max-height: 520px) {
+    body { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; align-items: stretch; }
+    .screen-container { width: 100%; height: auto; min-height: 100dvh; padding: 64px 12px 28px; justify-content: center; }
+    .sound-toggle { position: absolute; width: 36px; height: 36px; font-size: 16px; top: 8px; right: 8px; }
+    .lang-toggle { right: 50px; font-size: 11px; }
+    .back-btn { top: 10px; left: 10px; padding: 7px 12px; font-size: 14px; }
+
+    /* เมนู */
+    .title-text { font-size: clamp(38px, 11vw, 60px); letter-spacing: 2px; text-align: center; }
+    .title-text.small { font-size: clamp(30px, 9vw, 44px); margin-bottom: 16px; }
+    .subtitle { font-size: 12px; letter-spacing: 1px; text-align: center; margin-bottom: 26px; }
+    .menu-cylinder { width: 230px; height: 230px; }
+    .menu-ghosts { display: none; }
+    .menu-buttons { width: min(320px, 86vw); gap: 12px; }
+    .menu-buttons button { font-size: 19px; padding: 12px; }
+
+    /* ห้อง / ฟอร์ม */
+    .panel { padding: 18px 16px; width: min(400px, 94vw); }
+    .create-input { width: 100%; font-size: 16px; }
+    #join-player-name { width: min(320px, 90vw); }
+    .room-grid { grid-template-columns: 1fr; width: 100%; max-height: none; padding: 6px 2px; gap: 10px; }
+    .room-card { padding: 10px 12px; }
+    .room-fraction { font-size: 20px; width: 44px; }
+    .join-btn { padding: 7px 12px; font-size: 13px; margin-left: 8px; }
+    .join-full { width: auto; }
+    .lobby-players { width: 100%; }
+    .lobby-player { font-size: 16px; }
+
+    /* หน้าต่าง */
+    .modal { padding: 16px 14px 14px; max-height: 92dvh; }
+    .modal-title { font-size: 34px; }
+    .set-row { flex-wrap: wrap; }
+    .set-input { width: 100%; font-size: 16px; }
+    .set-volume input[type=range] { width: 120px; }
+    .podium-col { width: 92px; }
+    .results-head, .results-row { grid-template-columns: 30px 1fr 96px 52px; }
+    .results-head span:nth-child(5), .rr-longest { display: none; }
+    .results-actions button, .settings-actions button { padding: 10px 14px; font-size: 15px; }
+
+    /* ---------- กระดานเกม: เรียงแนวตั้ง ---------- */
+    .game-board {
+        width: 100%; height: auto; min-height: 100dvh; border-radius: 0; border: none;
+        display: flex; flex-direction: column; gap: 8px; padding: 50px 8px 8px;
+        transform: none !important;
+    }
+    .game-board .player {
+        position: static !important; top: auto !important; left: auto !important; right: auto !important; bottom: auto !important;
+        translate: none !important; width: auto !important;
+    }
+    .opponents { order: 1; display: flex; gap: 6px; justify-content: center; }
+    .opponents .player { flex: 1 1 0; min-width: 0; max-width: 150px; padding: 6px 4px; border-radius: 10px; }
+    .opponents .avatar { font-size: 22px; margin-bottom: 0; }
+    .opponents .name { font-size: 11px; margin-bottom: 2px; }
+    .opponents .hp { min-height: 22px; gap: 6px; margin-bottom: 2px; font-size: 11px; }
+    .opponents .hp-pip { transform: scale(0.8); }
+    .opponents .cards-hidden { min-height: 16px; font-size: 10px; }
+    .player.aimed::after { font-size: 36px; }
+
+    .center-table {
+        order: 2; position: relative; top: auto; left: auto; transform: none;
+        width: 100%; height: auto; border-radius: 22px; border-width: 6px;
+        padding: 12px 10px; gap: 10px; flex-wrap: nowrap; align-items: center;
+    }
+    .table-left { flex: 0 0 auto; gap: 4px; }
+    .revolver { width: 92px; height: 100px; }
+    .cylinder { width: 92px; height: 92px; }
+    .chamber { width: 19px; height: 19px; margin: -9.5px 0 0 -9.5px; }
+    .chamber[data-i="0"] { transform: rotate(-90deg) translateX(24px); }
+    .chamber[data-i="1"] { transform: rotate(-18deg) translateX(24px); }
+    .chamber[data-i="2"] { transform: rotate(54deg) translateX(24px); }
+    .chamber[data-i="3"] { transform: rotate(126deg) translateX(24px); }
+    .chamber[data-i="4"] { transform: rotate(198deg) translateX(24px); }
+    .hammer { font-size: 15px; top: -8px; }
+    .cross-status { font-size: 11px; }
+    .cross-status .sub { font-size: 10px; }
+    .table-right { flex: 1 1 auto; width: auto; min-width: 0; }
+    .prompt-box { font-size: 32px; margin-bottom: 0; }
+    #target-letter { font-size: 40px; }
+    .prompt-blanks { font-size: 22px; }
+    #timer-display { margin-bottom: 6px; }
+    #word-input { font-size: 18px; padding: 8px; }
+    #message-box { font-size: 12px; min-height: 40px; }
+    #start-btn { font-size: 15px; padding: 9px 18px; margin: 0; }
+    .btn-stab { font-size: 12px; padding: 6px 9px; }
+    .ouija-letters text { font-size: 18px; }
+
+    .player.self { order: 3; padding: 8px 10px; }
+    .self-row { justify-content: flex-start; }
+    .self-row .avatar { font-size: 28px; }
+
+    .hand, .layout-3 .hand { order: 4; position: relative; left: auto; bottom: auto; width: 100%; height: 138px; flex-shrink: 0; }
+    .hand .play-card { left: calc(50% - 42px); bottom: 4px; }
+    .hand:empty { height: 0; }
+
+    .action-log { order: 5; position: relative; right: auto; bottom: auto; width: 100%; height: 96px; padding: 6px 10px; }
+    .log-title { font-size: 12px; margin-bottom: 3px; padding-bottom: 3px; }
+    .log-content { font-size: 11.5px; gap: 2px; }
+
+    .shot-banner { position: fixed; top: 42%; font-size: 72px; }
+    .shot-banner.click { font-size: 52px; }
+    .shot-banner.deal { font-size: 48px; }
+    .card-reveal { position: fixed; top: 42%; }
+}
+
+/* มือถือแนวนอน: กระดาน 2 คอลัมน์ ให้เห็นครบโดยไม่ต้องเลื่อนมาก */
+@media (max-height: 520px) and (min-width: 600px) {
+    .game-board { display: grid; grid-template-columns: 1.3fr 1fr; grid-auto-rows: min-content; column-gap: 10px; padding-top: 46px; }
+    .opponents { grid-column: 1 / -1; }
+    .center-table { grid-column: 1; grid-row: 2 / span 3; }
+    .player.self { grid-column: 2; }
+    .hand { grid-column: 2; height: 128px; }
+    .action-log { grid-column: 2; height: 70px; }
+}
