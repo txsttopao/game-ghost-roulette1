@@ -558,3 +558,15 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; }
 .results-actions button { font-size: 17px; padding: 11px 24px; margin: 0; }
 .btn-home { background: linear-gradient(180deg, #2a1a40, #140b22); }
 .btn-again { background: linear-gradient(180deg, #2fbf8f, #187356); border-color: rgba(125,255,207,0.6); box-shadow: 0 4px 0 #0b3d2c, 0 0 18px rgba(125,255,207,0.4); }
+
+/* ========================================== */
+/* BOTS */
+/* ========================================== */
+.lobby-player { display: flex; align-items: center; justify-content: space-between; }
+.lobby-player.bot { background: linear-gradient(90deg, rgba(40,110,90,0.45), rgba(15,30,30,0.6)); border-color: rgba(125,255,207,0.3); }
+.bot-remove { width: 28px; height: 28px; padding: 0; margin: 0; font-size: 13px; border-radius: 50%; background: rgba(0,0,0,0.4); box-shadow: none; border: 1px solid rgba(255,255,255,0.2); }
+.bot-remove:hover { background: #8a1a2a; }
+.addbot-btn {
+    width: 100%; margin: 0 0 10px 0; padding: 10px; font-size: 17px; letter-spacing: 1px;
+    background: linear-gradient(180deg, #2a6f5c, #154536); border-color: rgba(125,255,207,0.4); box-shadow: 0 4px 0 #0b2a20;
+}

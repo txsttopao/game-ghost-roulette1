@@ -219,8 +219,18 @@ function renderLobby(state) {
     list.innerHTML = '';
     state.players.forEach(p => {
         const row = document.createElement('div');
-        row.className = 'lobby-player';
-        row.innerText = `💀 ${p.name}${p.id === state.hostId ? ' 👑' : ''}${p.id === myId ? ' (คุณ)' : ''}`;
+        row.className = 'lobby-player' + (p.isBot ? ' bot' : '');
+        const label = document.createElement('span');
+        label.innerText = `${p.isBot ? '🤖' : '💀'} ${p.name}${p.isBot ? ' (บอท)' : ''}${p.id === state.hostId ? ' 👑' : ''}${p.id === myId ? ' (คุณ)' : ''}`;
+        row.appendChild(label);
+        if (p.isBot && isHost) {
+            const rm = document.createElement('button');
+            rm.className = 'bot-remove';
+            rm.innerText = '✕';
+            rm.title = 'เอาบอทออก';
+            rm.onclick = () => socket.emit('removeBot', p.id);
+            row.appendChild(rm);
+        }
         list.appendChild(row);
     });
     for (let i = state.players.length; i < state.max; i++) {
@@ -230,11 +240,14 @@ function renderLobby(state) {
         list.appendChild(row);
     }
 
+    const addBotBtn = document.getElementById('lobby-addbot-btn');
+    addBotBtn.style.display = isHost && state.players.length < state.max ? 'inline-block' : 'none';
+
     const startBtn = document.getElementById('lobby-start-btn');
     startBtn.style.display = isHost ? 'inline-block' : 'none';
     startBtn.disabled = state.players.length < 2;
     document.getElementById('lobby-status').innerText = isHost
-        ? (state.players.length < 2 ? 'รอเพื่อนเข้าห้องอย่างน้อย 1 คน' : (state.players.length < state.max ? 'กด START GAME ได้เลย (หรือรอให้ห้องเต็ม)' : 'ห้องเต็มแล้ว! กด START GAME ได้เลย'))
+        ? (state.players.length < 2 ? 'รอเพื่อนเข้าห้อง หรือกด + เพิ่มบอท เพื่อเล่นกับบอท' : (state.players.length < state.max ? 'กด START GAME ได้เลย (หรือรอให้ห้องเต็ม)' : 'ห้องเต็มแล้ว! กด START GAME ได้เลย'))
         : 'รอหัวห้อง 👑 กดเริ่มเกม...';
 }
 
@@ -273,7 +286,7 @@ function renderGame(state) {
         const p = players[(myIndex + slot) % n];
         el.querySelector('.name').innerText = slot === 0
             ? `${p.name} (คุณ)`
-            : p.name + (p.connected ? '' : ' (ออกแล้ว)');
+            : p.name + (p.isBot ? ' 🤖' : '') + (p.connected ? '' : ' (ออกแล้ว)');
         el.querySelector('.avatar').innerText = avatars[players.indexOf(p) % avatars.length];
         el.dataset.pid = p.id;
         document.getElementById(`hp-${slot}`).innerHTML = p.hp > 0 ? '<span class="hp-pip"></span>'.repeat(p.hp) : "👻 กลายเป็นผี";

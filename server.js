@@ -32,13 +32,23 @@ fetch(dictionaryUrl)
     .then(res => { if (!res.ok) throw new Error(res.status); return res.text(); })
     .then(text => {
         dictionary = new Set(text.split(/\r?\n/).map(w => w.trim().toUpperCase()).filter(Boolean));
+        buildBotWords();
         console.log(`โหลดพจนานุกรมสำเร็จ (${dictionary.size} คำ)`);
     })
     .catch(err => {
         console.log('โหลดพจนานุกรมออนไลน์ไม่ได้ ใช้ศัพท์สำรอง:', err.message);
         dictionary = new Set(["SAW", "SOUL", "SKULL", "SCARE", "SAD", "MONSTER", "NIGHTMARE", "VAMPIRE", "GHOST"]);
     })
-    .finally(() => { dictionaryReady = true; });
+    .finally(() => { dictionaryReady = true; if (!botWords.A) buildBotWords(); });
+
+// คำที่บอทเลือกใช้ (ยาว 3-10 ตัว) แยกตามตัวอักษรแรก
+let botWords = {};
+function buildBotWords() {
+    botWords = {};
+    for (const w of dictionary) {
+        if (w.length >= 3 && w.length <= 10 && /^[A-Z]+$/.test(w)) (botWords[w[0]] ||= []).push(w);
+    }
+}
 
 // ==========================================
 // 2. ข้อมูลการ์ด
@@ -89,7 +99,7 @@ function viewFor(room, playerId) {
     const me = room.players.find(p => p.id === playerId);
     return {
         id: room.id, name: room.name, max: room.max, hostId: room.hostId, status: room.status,
-        players: room.players.map(p => ({ id: p.id, name: p.name, hp: p.hp, cardCount: p.cards.length, connected: p.connected })),
+        players: room.players.map(p => ({ id: p.id, name: p.name, hp: p.hp, cardCount: p.cards.length, connected: p.connected, isBot: !!p.isBot })),
         myCards: me ? me.cards : [],
         game: g ? {
             phase: g.phase,
@@ -105,9 +115,10 @@ function viewFor(room, playerId) {
     };
 }
 function sendRoomState(room) {
-    room.players.forEach(p => { if (p.connected) io.to(p.id).emit('roomState', viewFor(room, p.id)); });
+    room.players.forEach(p => { if (p.connected && !p.isBot) io.to(p.id).emit('roomState', viewFor(room, p.id)); });
 }
-function privateMsg(p, text) { if (p.connected) io.to(p.id).emit('privateMsg', text); }
+function privateMsg(p, text) { if (p.connected && !p.isBot) io.to(p.id).emit('privateMsg', text); }
+const humansIn = room => room.players.filter(p => p.connected && !p.isBot);
 function addLog(room, html) { io.to(room.id).emit('log', html); }
 
 function addPlayer(room, socket, playerName) {
@@ -132,9 +143,10 @@ function leaveCurrentRoom(socket) {
     if (room.status === 'waiting') room.players.splice(idx, 1);
     else handleInGameLeave(room, idx);
 
-    const remaining = room.players.filter(p => p.connected);
+    const remaining = humansIn(room);
     if (remaining.length === 0) {
         if (room.game) clearTimers(room.game);
+        room.game = null;   // หยุดบอทที่อาจกำลังพิมพ์ค้างอยู่
         rooms.delete(room.id);
     } else {
         if (room.hostId === socket.id) room.hostId = remaining[0].id;
@@ -149,8 +161,8 @@ function resetRoom(room) {
     room.game = null;
     room.players = room.players.filter(p => p.connected);
     room.players.forEach(p => { p.hp = 3; p.cards = []; });
-    if (room.players.length === 0) { rooms.delete(room.id); broadcastRoomList(); return; }
-    if (!room.players.some(p => p.id === room.hostId)) room.hostId = room.players[0].id;
+    if (humansIn(room).length === 0) { rooms.delete(room.id); broadcastRoomList(); return; }
+    if (!room.players.some(p => p.id === room.hostId)) room.hostId = humansIn(room)[0].id;
     sendRoomState(room);
     broadcastRoomList();
 }
@@ -159,8 +171,8 @@ function resetRoom(room) {
 // 5. ระบบเกม
 // ==========================================
 function clearTimers(g) {
-    clearTimeout(g.timeout); clearInterval(g.interval);
-    g.timeout = null; g.interval = null;
+    clearTimeout(g.timeout); clearInterval(g.interval); clearTimeout(g.botTimer);
+    g.timeout = null; g.interval = null; g.botTimer = null;
 }
 // ตั้งเวลาทำงานถัดไป (มีได้ทีละอันต่อห้อง)
 function schedule(room, fn, ms) {
@@ -275,6 +287,7 @@ function beginTurn(room) {
         addLog(r, `<span class="log-sys">⌛ ${pTag(cur)} ไม่กดเริ่มเทิร์น ข้ามเทิร์น</span>`);
         nextTurn(r);
     }, IDLE_MS);
+    botAct(room);
 }
 
 function startTurnPhase(room, cardIndex) {
@@ -302,6 +315,7 @@ function startTurnPhase(room, cardIndex) {
     g.timeout = setTimeout(() => {
         if (room.game === g && g.phase === 'typing') failTurn(room, "หมดเวลา!");
     }, TURN_SECONDS * 1000 + GRACE_MS);
+    botAct(room);
 }
 
 function validateWord(room, rawWord) {
@@ -355,6 +369,7 @@ function validateWord(room, rawWord) {
         addLog(r, `<span class="log-sys">⌛ ${pTag(me)} เลือกเป้าไม่ทัน สุ่มเป้าให้</span>`);
         attackTarget(r, randomItem(alive));
     }, TARGET_MS);
+    botAct(room);
 }
 
 function failTurn(room, reason) {
@@ -385,6 +400,7 @@ function applySkillEffect(room, playerIdx, cardId) {
     switch (cardId) {
         case "Ouija":
             addLog(room, `- <span class="log-sys">${pTag(p)} แอบส่องวงเวท!</span>`);
+            if (p.isBot) g.botPeek = { id: p.id, real: g.crossPool[0] === 'real' };
             return `\n👁️ ดวงต่อไปคือ [${g.crossPool[0] === 'real' ? "👻 วิญญาณร้าย" : "💨 เงาลวง"}]!`;
         case "Incense": {
             const discarded = g.crossPool.shift(); g.thrown++;
@@ -459,6 +475,71 @@ function attackTarget(room, targetIdx) {
     }, SUSPENSE_MS);
 }
 
+// ==========================================
+// 5.5 บอท (เซิร์ฟเวอร์เล่นแทน)
+// ==========================================
+const BOT_NAMES = ['กระสือ', 'ปอบ', 'แม่นาค', 'เปรต', 'กระหัง', 'ผีตายโหง', 'นางตานี', 'ผีกองกอย'];
+let nextBotId = 1;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const between = (a, b) => a + Math.random() * (b - a);
+
+function addBot(room) {
+    const name = BOT_NAMES.find(n => !room.players.some(p => p.name === n)) || `บอท ${nextBotId}`;
+    room.players.push({ id: `bot-${nextBotId++}`, name, hp: 3, cards: [], connected: true, isBot: true });
+}
+
+// ให้บอทที่ถึงเทิร์นทำอะไรสักอย่างตามเฟส
+function botAct(room) {
+    const g = room.game;
+    const bot = room.players[g.turnIndex];
+    if (!bot || !bot.isBot) return;
+    const phase = g.phase;
+    const stillMyMove = () => room.game === g && g.phase === phase && room.players[g.turnIndex] === bot;
+
+    if (phase === 'idle') {
+        g.botTimer = setTimeout(() => {
+            if (!stillMyMove()) return;
+            const useCard = bot.cards.length > 0 && Math.random() < 0.45;
+            startTurnPhase(room, useCard ? Math.floor(Math.random() * bot.cards.length) : -1);
+        }, between(1200, 2500));
+    } else if (phase === 'typing') {
+        g.botTimer = setTimeout(async () => {
+            if (!stillMyMove()) return;
+            let word = null;
+            if (Math.random() > 0.1) {   // พลาดบ้าง ~10%
+                const pool = botWords[g.letter] || [];
+                for (let i = 0; i < 30 && pool.length; i++) {
+                    const w = randomItem(pool);
+                    if (!g.usedWords.has(w)) { word = w; break; }
+                }
+            }
+            word ||= g.letter + 'ZQX';
+            // พิมพ์ทีละตัวให้คนอื่นเห็น
+            for (let i = 1; i <= word.length; i++) {
+                if (!stillMyMove()) return;
+                g.typing = word.slice(0, i);
+                io.to(room.id).emit('typing', g.typing);
+                await sleep(between(90, 170));
+            }
+            if (stillMyMove()) validateWord(room, word);
+        }, between(1500, 3500));
+    } else if (phase === 'target') {
+        g.botTimer = setTimeout(() => {
+            if (!stillMyMove()) return;
+            const myIdx = g.turnIndex;
+            const others = room.players.map((p, i) => i).filter(i => i !== myIdx && room.players[i].hp > 0);
+            let target = randomItem(others);
+            // ถ้าแอบดูแล้วรู้ว่าดวงต่อไปเป็นเงาลวง -> สาปตัวเองให้ปลอดภัย
+            if (g.botPeek && g.botPeek.id === bot.id) {
+                const real = g.botPeek.real !== !!g.effects.inverted;
+                if (!real) target = myIdx;
+            } else if (Math.random() < 0.08) target = myIdx;
+            g.botPeek = null;
+            attackTarget(room, target);
+        }, between(1000, 2200));
+    }
+}
+
 function handleInGameLeave(room, idx) {
     const g = room.game;
     const p = room.players[idx];
@@ -526,6 +607,26 @@ io.on('connection', socket => {
     socket.on('leaveRoom', () => {
         leaveCurrentRoom(socket);
         socket.emit('roomList', roomList());
+    });
+
+    // หัวห้องเพิ่ม/ลบบอทในห้องรอ
+    socket.on('addBot', () => {
+        const room = myRoom();
+        if (!room || room.hostId !== socket.id || room.status !== 'waiting') return;
+        if (room.players.length >= room.max) return err('ห้องเต็มแล้ว');
+        addBot(room);
+        sendRoomState(room);
+        broadcastRoomList();
+    });
+
+    socket.on('removeBot', botId => {
+        const room = myRoom();
+        if (!room || room.hostId !== socket.id || room.status !== 'waiting') return;
+        const idx = room.players.findIndex(p => p.id === botId && p.isBot);
+        if (idx === -1) return;
+        room.players.splice(idx, 1);
+        sendRoomState(room);
+        broadcastRoomList();
     });
 
     socket.on('startGame', () => {

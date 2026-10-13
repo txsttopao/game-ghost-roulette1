@@ -116,6 +116,7 @@
                     <h3>👥 ห้อง & กติกาเพิ่มเติม</h3>
                     <ul>
                         <li>หัวห้อง 👑 กด START GAME ได้เมื่อมีผู้เล่น 2 คนขึ้นไป หัวห้องได้เล่นก่อน แล้ววนตามลำดับคนที่เข้าห้อง</li>
+                        <li>ไม่มีเพื่อนก็เล่นได้: หัวห้องกด <b>+ เพิ่มบอท</b> ในห้องรอ (กด ✕ เพื่อเอาบอทออก)</li>
                         <li>ไม่กดเริ่มเทิร์นภายใน <b>30 วินาที</b> → ถูกข้ามเทิร์น</li>
                         <li>ไม่เลือกเป้าภายใน <b>15 วินาที</b> → ระบบสุ่มเป้าให้</li>
                         <li>ออกจากเกมกลางคัน = กลายเป็นผีทันที</li>
@@ -168,6 +169,7 @@
             <div class="lobby-count" id="lobby-count"></div>
             <div class="lobby-players" id="lobby-players"></div>
             <div class="lobby-status" id="lobby-status"></div>
+            <button id="lobby-addbot-btn" class="addbot-btn" onclick="socket.emit('addBot')">+ เพิ่มบอท 🤖</button>
             <button id="lobby-start-btn" class="create-submit-btn" onclick="hostStartGame()">START GAME</button>
         </div>
     </div>
