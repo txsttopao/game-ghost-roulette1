@@ -88,7 +88,7 @@ socket.on('tick', t => { ui.time.innerText = t; ui.timerFill.style.width = `${t 
 socket.on('privateMsg', text => { ui.message.innerText = text; });
 socket.on('typing', text => { if (!isMyTurn()) ui.input.value = text; });
 
-// ผู้ยิงเล็งเป้า -> หมุนโม่ลุ้น
+// ร่ายคาถาใส่เป้า -> วงเวทหมุนลุ้น
 socket.on('aim', ({ targetId }) => {
     const el = slotElementOf(targetId);
     if (el) el.classList.add('aimed');
@@ -98,20 +98,20 @@ socket.on('aim', ({ targetId }) => {
     Sound.spin();
 });
 
-// เฉลยผล -> BANG! หรือ คลิก
+// เฉลยผล -> BOO! หรือ เงาลวง
 socket.on('shotResult', ({ targetId, real }) => {
     document.querySelectorAll('.player.aimed').forEach(el => el.classList.remove('aimed'));
     ui.revolver.classList.remove('spinning');
     const el = slotElementOf(targetId);
     if (real) {
         Sound.bang();
-        showBanner('BANG!', 'bang');
+        showBanner('BOO!', 'bang');
         restartAnim(ui.flash, 'bang');
         restartAnim(ui.board, 'shake');
         if (el) restartAnim(el, 'hit');
     } else {
         Sound.click();
-        showBanner('*click*', 'click');
+        showBanner('poof...', 'click');
     }
 });
 
@@ -275,7 +275,7 @@ function renderGame(state) {
             : p.name + (p.connected ? '' : ' (ออกแล้ว)');
         el.querySelector('.avatar').innerText = avatars[players.indexOf(p) % avatars.length];
         el.dataset.pid = p.id;
-        document.getElementById(`hp-${slot}`).innerHTML = p.hp > 0 ? '<span class="hp-pip"></span>'.repeat(p.hp) : "💀 ตาย";
+        document.getElementById(`hp-${slot}`).innerHTML = p.hp > 0 ? '<span class="hp-pip"></span>'.repeat(p.hp) : "👻 กลายเป็นผี";
         el.classList.toggle('dead-player', p.hp <= 0);
         el.classList.toggle('current-turn', p.id === g.turnId && g.phase !== 'over');
 
@@ -297,7 +297,7 @@ function renderGame(state) {
 
     // โต๊ะกลาง
     const c = g.crosses;
-    ui.crossStatus.innerHTML = `<span class="real">🔴 จริง ${c.realLeft}</span> · <span class="fake">⚪ หลอก ${c.fakeLeft}</span><br><span class="sub">ลั่นไกไปแล้ว ${c.thrown}/${c.total} นัด</span>`;
+    ui.crossStatus.innerHTML = `<span class="real">👻 ร้าย ${c.realLeft}</span> · <span class="fake">💨 ลวง ${c.fakeLeft}</span><br><span class="sub">ปล่อยไปแล้ว ${c.thrown}/${c.total} ดวง</span>`;
     renderCylinder(c);
     ui.letter.innerText = g.letter;
     ui.time.innerText = g.timeLeft;
@@ -327,7 +327,7 @@ function renderGame(state) {
             if (p.hp <= 0) return;
             const btn = document.createElement("button");
             btn.className = "btn-stab";
-            btn.innerText = (p.id === myId) ? "ยิงตัวเอง" : `ยิง ${p.name}`;
+            btn.innerText = (p.id === myId) ? "สาปตัวเอง" : `สาป ${p.name}`;
             btn.onclick = () => attackTarget(p.id);
             ui.targets.appendChild(btn);
         });
@@ -362,7 +362,7 @@ function attackTarget(targetId) {
 }
 
 // ==========================================
-// 6. โม่ปืน & เอฟเฟกต์
+// 6. วงเวทวิญญาณ & เอฟเฟกต์
 // ==========================================
 function renderCylinder(c) {
     ui.cylinder.querySelectorAll('.chamber').forEach((ch, i) => {
@@ -370,7 +370,7 @@ function renderCylinder(c) {
         ch.className = 'chamber ' + (fired === 'real' ? 'fired-real' : fired === 'fake' ? 'fired-fake' : 'loaded');
         if (i === c.thrown && !fired) ch.classList.add('next');
     });
-    // หมุนให้รูถัดไปอยู่ใต้นกสับ (หมุนไปข้างหน้าตลอด แม้บรรจุกระสุนใหม่)
+    // หมุนให้ดวงถัดไปอยู่ใต้เทียน (หมุนไปข้างหน้าตลอด แม้อัญเชิญรอบใหม่)
     ui.cylinder.style.transform = `rotate(${-(c.reloads * 5 + c.thrown) * 72}deg)`;
 }
 
@@ -411,18 +411,24 @@ const Sound = (() => {
         if (ctx.state === 'suspended') ctx.resume();
         return ctx;
     }
-    function noise(duration, freq, gain, when = 0) {
+    // เสียงซ่า (ลม/ควัน) กรองความถี่ได้ และกวาดความถี่ได้
+    function noise(duration, freq, gain, when = 0, type = 'lowpass', freqEnd = freq) {
         const a = ac(), t = a.currentTime + when;
-        const buf = a.createBuffer(1, a.sampleRate * duration, a.sampleRate);
+        const buf = a.createBuffer(1, Math.ceil(a.sampleRate * duration), a.sampleRate);
         const data = buf.getChannelData(0);
-        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
         const src = a.createBufferSource(); src.buffer = buf;
-        const filter = a.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = freq;
-        const g = a.createGain(); g.gain.value = gain;
+        const filter = a.createBiquadFilter(); filter.type = type; filter.Q.value = type === 'bandpass' ? 4 : 1;
+        filter.frequency.setValueAtTime(freq, t);
+        filter.frequency.exponentialRampToValueAtTime(freqEnd, t + duration);
+        const g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + duration * 0.3);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
         src.connect(filter).connect(g).connect(a.destination);
         src.start(t);
     }
-    function tone(freq, duration, gain, type = 'square', when = 0) {
+    function tone(freq, duration, gain, type = 'sine', when = 0) {
         const a = ac(), t = a.currentTime + when;
         const o = a.createOscillator(); o.type = type; o.frequency.value = freq;
         const g = a.createGain();
@@ -431,19 +437,30 @@ const Sound = (() => {
         o.connect(g).connect(a.destination);
         o.start(t); o.stop(t + duration);
     }
+    // เสียงผีโหยหวน: ความถี่ขึ้นแล้วลง + สั่นแบบ vibrato
+    function wail(gain) {
+        const a = ac(), t = a.currentTime;
+        const o = a.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(260, t);
+        o.frequency.exponentialRampToValueAtTime(720, t + 0.35);
+        o.frequency.exponentialRampToValueAtTime(190, t + 1.3);
+        const lfo = a.createOscillator(); lfo.frequency.value = 7;
+        const lfoGain = a.createGain(); lfoGain.gain.value = 25;
+        lfo.connect(lfoGain).connect(o.frequency);
+        const g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+        o.connect(g).connect(a.destination);
+        o.start(t); lfo.start(t); o.stop(t + 1.4); lfo.stop(t + 1.4);
+    }
     return {
         get enabled() { return enabled; },
         set enabled(v) { enabled = v; localStorage.setItem('ghostSound', v ? 'on' : 'off'); },
-        click() { if (!enabled) return; tone(1800, 0.04, 0.15); noise(0.05, 3000, 0.25, 0.01); },
-        tick() { if (!enabled) return; tone(900, 0.05, 0.06, 'sine'); },
-        spin() {
-            if (!enabled) return;
-            for (let i = 0; i < 14; i++) {
-                const when = 1.5 * (1 - Math.pow(1 - i / 14, 1.8));
-                tone(2200, 0.02, 0.05, 'square', when); noise(0.02, 4000, 0.08, when);
-            }
-        },
-        bang() { if (!enabled) return; noise(0.9, 1200, 1.0); noise(0.25, 6000, 0.5); tone(70, 0.4, 0.5, 'sine'); }
+        click() { if (!enabled) return; noise(0.35, 900, 0.18, 0, 'lowpass', 200); },          // พรึ่บ... ควันจาง
+        tick() { if (!enabled) return; tone(660, 0.12, 0.05); },                                // ระฆังเบาๆ
+        spin() { if (!enabled) return; noise(1.7, 400, 0.12, 0, 'bandpass', 1800); },           // ลมกระซิบหมุนวน
+        bang() { if (!enabled) return; wail(0.35); tone(55, 0.6, 0.45); noise(0.5, 3000, 0.15, 0, 'highpass', 800); } // BOO!
     };
 })();
 

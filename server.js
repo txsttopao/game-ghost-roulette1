@@ -1,6 +1,6 @@
 // ==========================================
 // Ghost's Roulette — Multiplayer Server
-// เซิร์ฟเวอร์เป็นคนตัดสินทุกอย่าง (ห้อง, เทิร์น, คำศัพท์, โม่ปืน, การ์ด)
+// เซิร์ฟเวอร์เป็นคนตัดสินทุกอย่าง (ห้อง, เทิร์น, คำศัพท์, วงเวทวิญญาณ, การ์ด)
 // ==========================================
 const express = require('express');
 const http = require('http');
@@ -174,8 +174,8 @@ function refillAndShuffleCrosses(g) {
     }
     g.crossPool = pool;
     g.thrown = 0; g.realThrown = 0; g.fakeThrown = 0;
-    g.fired = [];                       // ผลของแต่ละรูในโม่ที่ยิงไปแล้ว
-    g.reloads = (g.reloads ?? -1) + 1;  // ให้ client หมุนโม่ไปข้างหน้าตลอด
+    g.fired = [];                       // ผลของวิญญาณแต่ละดวงในวงเวทที่ปล่อยไปแล้ว
+    g.reloads = (g.reloads ?? -1) + 1;  // ให้ client หมุนวงเวทไปข้างหน้าตลอด
 }
 
 function startGame(room) {
@@ -208,8 +208,8 @@ function checkGameOver(room) {
         g.message = `🎉 จบเกม! ${alive[0].name} รอดชีวิตเป็นคนสุดท้าย! 🎉`;
         addLog(room, `<span class="log-sys">🎉 จบเกม! ${pTag(alive[0])} ชนะ!</span>`);
     } else {
-        g.message = `💀 ตายเรียบ! เสมอกัน! 💀`;
-        addLog(room, `<span class="log-sys">💀 ตายเรียบ! เสมอกัน!</span>`);
+        g.message = `👻 กลายเป็นผีกันหมด! เสมอกัน! 👻`;
+        addLog(room, `<span class="log-sys">👻 กลายเป็นผีกันหมด! เสมอกัน!</span>`);
     }
     g.message += `\n(กลับห้องรอใน ${RESET_MS / 1000} วินาที)`;
     sendRoomState(room);
@@ -294,7 +294,7 @@ function validateWord(room, rawWord) {
     g.usedWords.add(word);
     g.word = word;
     g.typing = word;
-    let successMsg = "เยี่ยมมาก! ได้สิทธิ์ลั่นไก";
+    let successMsg = "เยี่ยมมาก! ได้สิทธิ์ปล่อยวิญญาณ";
 
     if (word.length >= 5) {
         const tier = word.length >= 8 ? 'rare' : 'normal';
@@ -311,8 +311,8 @@ function validateWord(room, rawWord) {
     if (g.effects.skipStabPhase) {
         g.effects.skipStabPhase = false;
         g.phase = 'busy';
-        g.message = `${me.name} ใช้คำว่า ${word} และไม่ต้องลั่นไกเทิร์นนี้`;
-        addLog(room, `${pTag(me)} ใช้คำว่า <span class="log-word">${word}</span> (ไม่ยิง)`);
+        g.message = `${me.name} ใช้คำว่า ${word} และไม่ต้องปล่อยวิญญาณเทิร์นนี้`;
+        addLog(room, `${pTag(me)} ใช้คำว่า <span class="log-word">${word}</span> (ไม่สาป)`);
         sendRoomState(room);
         privateMsg(me, successMsg);
         schedule(room, nextTurn, 3000);
@@ -320,9 +320,9 @@ function validateWord(room, rawWord) {
     }
 
     g.phase = 'target';
-    g.message = `${me.name} ใช้คำว่า ${word} — กำลังเลือกว่าจะยิงใคร...`;
+    g.message = `${me.name} ใช้คำว่า ${word} — กำลังเลือกว่าจะสาปใคร...`;
     sendRoomState(room);
-    privateMsg(me, successMsg + "\nเลือกเป้าหมายที่จะยิง!");
+    privateMsg(me, successMsg + "\nเลือกคนที่จะสาป!");
     schedule(room, r => {
         const alive = r.players.map((p, i) => i).filter(i => r.players[i].hp > 0);
         addLog(r, `<span class="log-sys">⌛ ${pTag(me)} เลือกเป้าไม่ทัน สุ่มเป้าให้</span>`);
@@ -335,7 +335,7 @@ function failTurn(room, reason) {
     const me = room.players[g.turnIndex];
     clearTimers(g);
     g.phase = 'busy';
-    g.message = `${me.name} พลาด! (${reason}) หมดสิทธิ์ลั่นไกในเทิร์นนี้`;
+    g.message = `${me.name} พลาด! (${reason}) หมดสิทธิ์ปล่อยวิญญาณในเทิร์นนี้`;
 
     if (g.isSkillMode && me.cards[g.cardIndex]) {
         const lostCard = cardsData[me.cards.splice(g.cardIndex, 1)[0]].name;
@@ -343,7 +343,7 @@ function failTurn(room, reason) {
     }
     addLog(room, `<span class="log-sys">${pTag(me)} พิมพ์พลาดและเสียเทิร์น</span>`);
     sendRoomState(room);
-    privateMsg(me, reason + "\nหมดสิทธิ์ลั่นไกในเทิร์นนี้!");
+    privateMsg(me, reason + "\nหมดสิทธิ์ปล่อยวิญญาณในเทิร์นนี้!");
     schedule(room, nextTurn, 3000);
 }
 
@@ -357,15 +357,15 @@ function applySkillEffect(room, playerIdx, cardId) {
 
     switch (cardId) {
         case "Ouija":
-            addLog(room, `- <span class="log-sys">${pTag(p)} แอบส่องโม่ปืน!</span>`);
-            return `\n👁️ นัดต่อไปคือ [${g.crossPool[0] === 'real' ? "🔴 กระสุนจริง" : "⚪ ลูกหลอก"}]!`;
+            addLog(room, `- <span class="log-sys">${pTag(p)} แอบส่องวงเวท!</span>`);
+            return `\n👁️ ดวงต่อไปคือ [${g.crossPool[0] === 'real' ? "👻 วิญญาณร้าย" : "💨 เงาลวง"}]!`;
         case "Incense": {
             const discarded = g.crossPool.shift(); g.thrown++;
             if (discarded === 'real') g.realThrown++; else g.fakeThrown++;
             g.fired.push(discarded);
             g.effects.skipStabPhase = true;
-            addLog(room, `- <span class="log-sys">หมุนโม่ทิ้ง 1 นัดอย่างปลอดภัย</span>`);
-            return `\n🔥 หมุนโม่ทิ้งไป 1 นัด!`;
+            addLog(room, `- <span class="log-sys">ปัดเป่าวิญญาณทิ้ง 1 ดวงอย่างปลอดภัย</span>`);
+            return `\n🔥 ปัดเป่าวิญญาณทิ้งไป 1 ดวง!`;
         }
         case "Soul":
             p.hp = Math.min(p.hp + 1, 3);
@@ -373,8 +373,8 @@ function applySkillEffect(room, playerIdx, cardId) {
             return `\n🌑 ฟื้นฟู HP 1 หน่วย!`;
         case "Blood":
             g.effects.inverted = true;
-            addLog(room, `- <span class="log-sys">สลับกระสุนนัดต่อไป จริง⇄หลอก!</span>`);
-            return `\n🩸 สลับกระสุนนัดต่อไป จริง⇄หลอก!`;
+            addLog(room, `- <span class="log-sys">สลับวิญญาณดวงต่อไป ร้าย⇄ลวง!</span>`);
+            return `\n🩸 สลับวิญญาณดวงต่อไป ร้าย⇄ลวง!`;
         case "Chains":
             g.skipNextTurn = true;
             addLog(room, `- <span class="log-sys">เตรียมข้ามเทิร์นคนถัดไป!</span>`);
@@ -382,12 +382,12 @@ function applySkillEffect(room, playerIdx, cardId) {
         case "Stake":
             g.effects.doubleDamage = true;
             addLog(room, `- <span class="log-sys">เสริมพลังทำดาเมจ x2!</span>`);
-            return `\n🗡️ ถ้าเป็นกระสุนจริงจะทำดาเมจ x2!`;
+            return `\n🗡️ ถ้าเป็นวิญญาณร้ายจะทำดาเมจ x2!`;
     }
     return "";
 }
 
-const SUSPENSE_MS = 1800;   // จ่อปืนแล้วรอลุ้นก่อนเฉลยผล
+const SUSPENSE_MS = 1800;   // ร่ายคาถาแล้วรอลุ้นก่อนเฉลยผล
 
 function attackTarget(room, targetIdx) {
     const g = room.game;
@@ -399,8 +399,8 @@ function attackTarget(room, targetIdx) {
     const isSelf = targetIdx === g.turnIndex;
     const targetName = isSelf ? "ตัวเอง" : target.name;
     g.phase = 'firing';
-    g.message = isSelf ? `${me.name} จ่อปืนที่หัวตัวเอง...` : `${me.name} เล็งปืนไปที่ ${target.name}...`;
-    addLog(room, `${pTag(me)} ใช้คำว่า <span class="log-word">${g.word}</span> ยิง ${isSelf ? 'ตัวเอง' : pTag(target)}`);
+    g.message = isSelf ? `${me.name} ร่ายคาถาสาปตัวเอง...` : `${me.name} ร่ายคาถาสาปใส่ ${target.name}...`;
+    addLog(room, `${pTag(me)} ใช้คำว่า <span class="log-word">${g.word}</span> สาป ${isSelf ? 'ตัวเอง' : pTag(target)}`);
     sendRoomState(room);
     io.to(room.id).emit('aim', { shooterId: me.id, targetId: target.id });
 
@@ -415,11 +415,11 @@ function attackTarget(room, targetIdx) {
         if (isReal) {
             dmg = g.effects.doubleDamage ? 2 : 1;
             target.hp = Math.max(0, target.hp - dmg);
-            g.message = `💥 BANG! กระสุนจริง! ${targetName} โดนไป ${dmg} ดาเมจ`;
-            addLog(room, `- <span class="log-real">💥 BANG! กระสุนจริง</span> ทำดาเมจ ${dmg}`);
+            g.message = `👻 BOO! วิญญาณร้าย! ${targetName} โดนไป ${dmg} ดาเมจ`;
+            addLog(room, `- <span class="log-real">👻 BOO! วิญญาณร้าย</span> ทำดาเมจ ${dmg}`);
         } else {
-            g.message = `*คลิก* ... ลูกหลอก! ${targetName} รอดไป`;
-            addLog(room, `- <span class="log-fake">*คลิก* ลูกหลอก</span> รอดตัวไป`);
+            g.message = `💨 ...แค่เงาลวง! ${targetName} รอดไป`;
+            addLog(room, `- <span class="log-fake">💨 เงาลวง</span> รอดตัวไป`);
         }
         g.effects.doubleDamage = false;
         g.phase = 'busy';

@@ -18,24 +18,28 @@
     </div>
     <button id="sound-toggle" class="sound-toggle" onclick="toggleSound()" title="เปิด/ปิดเสียง">🔊</button>
 
-    <!-- โม่ปืนลายเส้น (ใช้ซ้ำหลายที่) -->
+    <!-- วงเวทอัญเชิญวิญญาณ (ใช้ซ้ำหลายที่) -->
     <svg width="0" height="0" style="position:absolute">
         <defs>
-            <radialGradient id="steel" cx="35%" cy="30%" r="80%">
-                <stop offset="0%" stop-color="#9a9a9a"/>
-                <stop offset="45%" stop-color="#4a4a4a"/>
-                <stop offset="100%" stop-color="#151515"/>
+            <radialGradient id="ritual" cx="50%" cy="50%" r="60%">
+                <stop offset="0%" stop-color="#2a1645"/>
+                <stop offset="70%" stop-color="#140a24"/>
+                <stop offset="100%" stop-color="#07030d"/>
             </radialGradient>
             <symbol id="cylinder-art" viewBox="-100 -100 200 200">
-                <circle r="92" fill="url(#steel)" stroke="#0a0a0a" stroke-width="4"/>
-                <g fill="#0b0b0b" stroke="#2a2a2a" stroke-width="3">
-                    <circle cx="0" cy="-52" r="24"/>
-                    <circle cx="49.5" cy="-16" r="24"/>
-                    <circle cx="30.6" cy="42" r="24"/>
-                    <circle cx="-30.6" cy="42" r="24"/>
-                    <circle cx="-49.5" cy="-16" r="24"/>
+                <circle r="94" fill="url(#ritual)" stroke="#7dffcf" stroke-opacity="0.5" stroke-width="2"/>
+                <circle r="86" fill="none" stroke="#7dffcf" stroke-opacity="0.35" stroke-width="1.5" stroke-dasharray="2 6"/>
+                <circle r="78" fill="none" stroke="#b38cff" stroke-opacity="0.35" stroke-width="1"/>
+                <!-- ดาว 5 แฉกเชื่อมทั้ง 5 ดวง -->
+                <polygon points="0,-52 30.6,42 -49.5,-16 49.5,-16 -30.6,42" fill="none" stroke="#7dffcf" stroke-opacity="0.45" stroke-width="2"/>
+                <g fill="#05020a" stroke="#b38cff" stroke-opacity="0.7" stroke-width="2.5">
+                    <circle cx="0" cy="-52" r="23"/>
+                    <circle cx="49.5" cy="-16" r="23"/>
+                    <circle cx="30.6" cy="42" r="23"/>
+                    <circle cx="-30.6" cy="42" r="23"/>
+                    <circle cx="-49.5" cy="-16" r="23"/>
                 </g>
-                <circle r="13" fill="#2b2b2b" stroke="#777" stroke-width="2"/>
+                <circle r="11" fill="#1a0d2b" stroke="#7dffcf" stroke-opacity="0.6" stroke-width="1.5"/>
             </symbol>
         </defs>
     </svg>
@@ -46,8 +50,9 @@
     <div id="main-menu-screen" class="screen-container">
         <div class="menu-hero">
             <svg class="menu-cylinder" viewBox="0 0 200 200"><use href="#cylinder-art"/></svg>
+            <div class="menu-ghosts"><span>👻</span><span>👻</span><span>👻</span></div>
             <h1 class="title-text">GHOST ROULETTE!</h1>
-            <div class="subtitle">SPELL TO SURVIVE · สะกดให้รอด แล้วลั่นไก</div>
+            <div class="subtitle">SPELL TO SURVIVE · สะกดให้รอด แล้วปล่อยวิญญาณ</div>
         </div>
         <div class="menu-buttons">
             <button onclick="showScreen('join-room-screen'); renderRooms();">JOIN ROOM</button>
@@ -68,7 +73,7 @@
             <div class="modal-body">
                 <section>
                     <h3>🎯 เป้าหมาย</h3>
-                    <p>ทุกคนเริ่มด้วยเลือด <b>3 ขีด</b> ใครรอดเป็นคนสุดท้ายชนะ</p>
+                    <p>ทุกคนเริ่มด้วย<b>เทียนชีวิต 3 เล่ม</b> 🕯️ เทียนดับหมด = กลายเป็นผี ใครรอดเป็นคนสุดท้ายชนะ</p>
                 </section>
 
                 <section>
@@ -77,19 +82,19 @@
                         <li>กด <b>เริ่มเทิร์นของคุณ</b> (หรือกดการ์ดในมือเพื่อใช้สกิลในเทิร์นนี้)</li>
                         <li>ระบบสุ่มตัวอักษรให้ 1 ตัว คุณมีเวลา <b>5 วินาที</b> พิมพ์ศัพท์อังกฤษที่ขึ้นต้นด้วยตัวนั้นแล้วกด <b>Enter</b></li>
                         <li>คำต้องยาว <b>3 ตัวขึ้นไป</b> ต้องมีในพจนานุกรม และ<b>ห้ามซ้ำ</b>กับคำที่ใครในเกมใช้ไปแล้ว</li>
-                        <li><b>พิมพ์ผ่าน</b> → ได้สิทธิ์ลั่นไก เลือกยิงใครก็ได้ รวมถึงยิงตัวเอง</li>
-                        <li><b>พิมพ์พลาด / หมดเวลา</b> → เสียเทิร์น ไม่ได้ยิง</li>
+                        <li><b>พิมพ์ผ่าน</b> → ได้สิทธิ์ปล่อยวิญญาณ เลือกสาปใครก็ได้ รวมถึงสาปตัวเอง</li>
+                        <li><b>พิมพ์พลาด / หมดเวลา</b> → เสียเทิร์น ไม่ได้สาป</li>
                     </ol>
                 </section>
 
                 <section>
-                    <h3>🔫 โม่ปืน</h3>
-                    <p>โม่มี 5 นัด: <span class="r-real">กระสุนจริง 3</span> + <span class="r-fake">ลูกหลอก 2</span> สลับลำดับแบบสุ่ม</p>
+                    <h3>🔮 วงเวทวิญญาณ</h3>
+                    <p>ในวงเวทมีวิญญาณ 5 ดวง: <span class="r-real">วิญญาณร้าย 3</span> + <span class="r-fake">เงาลวง 2</span> เรียงลำดับแบบสุ่ม</p>
                     <ul>
-                        <li>โดน<span class="r-real">กระสุนจริง</span> → เสียเลือด 1 ขีด</li>
-                        <li>เจอ<span class="r-fake">ลูกหลอก</span> → *คลิก* รอดไป</li>
-                        <li>ดูจำนวนจริง/หลอกที่เหลือได้ใต้โม่ปืนกลางโต๊ะ ยิงครบ 5 นัดแล้วจะบรรจุใหม่</li>
-                        <li>💡 ถ้ารู้ว่านัดต่อไปเป็นลูกหลอก ยิงตัวเองก็ปลอดภัย</li>
+                        <li>โดน<span class="r-real">วิญญาณร้าย</span> → <b>BOO!</b> เทียนชีวิตดับ 1 เล่ม</li>
+                        <li>เจอ<span class="r-fake">เงาลวง</span> → ควันจางหายไป รอดตัว</li>
+                        <li>ดูจำนวนร้าย/ลวงที่เหลือได้ใต้วงเวทกลางกระดาน ปล่อยครบ 5 ดวงแล้วจะอัญเชิญใหม่</li>
+                        <li>💡 ถ้ารู้ว่าดวงต่อไปเป็นเงาลวง สาปตัวเองก็ปลอดภัย</li>
                     </ul>
                 </section>
 
@@ -98,12 +103,12 @@
                     <p>คำยาว <b>5 ตัวขึ้นไป</b> ได้การ์ด <span class="r-normal">NORMAL</span> · ยาว <b>8 ตัวขึ้นไป</b> ได้การ์ด <span class="r-rare">RARE</span> (คนอื่นเห็นแค่จำนวนการ์ดของคุณ ไม่เห็นว่าเป็นใบไหน)</p>
                     <p>ใช้การ์ด: กดการ์ด<b>ก่อน</b>เริ่มเทิร์น แล้วต้องพิมพ์ศัพท์ให้ผ่านการ์ดถึงจะทำงาน ถ้าพิมพ์พลาด <b>การ์ดใบนั้นจะถูกยึด</b></p>
                     <table class="rules-cards">
-                        <tr><td><span class="r-normal">👁️ ดวงตาผีสาง</span></td><td>แอบดูว่านัดต่อไปจริงหรือหลอก (เห็นคนเดียว)</td></tr>
-                        <tr><td><span class="r-normal">🔥 ธูปบูชา</span></td><td>หมุนโม่ทิ้ง 1 นัด แล้วไม่ต้องยิงในเทิร์นนี้</td></tr>
-                        <tr><td><span class="r-normal">🌑 เศษเสี้ยววิญญาณ</span></td><td>ฟื้นเลือด 1 ขีด (สูงสุด 3)</td></tr>
-                        <tr><td><span class="r-rare">🩸 เลือดศักดิ์สิทธิ์</span></td><td>สลับนัดต่อไป จริง ⇄ หลอก</td></tr>
+                        <tr><td><span class="r-normal">👁️ ดวงตาผีสาง</span></td><td>แอบดูว่าดวงต่อไปเป็นวิญญาณร้ายหรือเงาลวง (เห็นคนเดียว)</td></tr>
+                        <tr><td><span class="r-normal">🔥 ธูปบูชา</span></td><td>ปัดเป่าวิญญาณทิ้ง 1 ดวง แล้วไม่ต้องสาปในเทิร์นนี้</td></tr>
+                        <tr><td><span class="r-normal">🌑 เศษเสี้ยววิญญาณ</span></td><td>จุดเทียนชีวิตคืน 1 เล่ม (สูงสุด 3)</td></tr>
+                        <tr><td><span class="r-rare">🩸 เลือดศักดิ์สิทธิ์</span></td><td>สลับดวงต่อไป ร้าย ⇄ ลวง</td></tr>
                         <tr><td><span class="r-rare">⛓️ โซ่ตรวนยมโลก</span></td><td>ผู้เล่นคนถัดไปถูกข้ามเทิร์น</td></tr>
-                        <tr><td><span class="r-rare">🗡️ ลิ่มเงิน</span></td><td>ถ้านัดที่ยิงเป็นกระสุนจริง ทำดาเมจ x2</td></tr>
+                        <tr><td><span class="r-rare">🗡️ ลิ่มเงิน</span></td><td>ถ้าดวงที่ปล่อยเป็นวิญญาณร้าย ทำดาเมจ x2</td></tr>
                     </table>
                 </section>
 
@@ -113,7 +118,7 @@
                         <li>หัวห้อง 👑 กด START GAME ได้เมื่อมีผู้เล่น 2 คนขึ้นไป หัวห้องได้เล่นก่อน แล้ววนตามลำดับคนที่เข้าห้อง</li>
                         <li>ไม่กดเริ่มเทิร์นภายใน <b>30 วินาที</b> → ถูกข้ามเทิร์น</li>
                         <li>ไม่เลือกเป้าภายใน <b>15 วินาที</b> → ระบบสุ่มเป้าให้</li>
-                        <li>ออกจากเกมกลางคัน = ตาย</li>
+                        <li>ออกจากเกมกลางคัน = กลายเป็นผีทันที</li>
                     </ul>
                 </section>
             </div>
@@ -192,9 +197,17 @@
 
         <!-- โต๊ะตรงกลาง -->
         <div class="center-table">
+            <!-- ลายกระดานผีถ้วยแก้ว (Ouija) -->
+            <svg class="ouija-letters" viewBox="0 0 512 332" aria-hidden="true">
+                <path id="ouija-arc" d="M 40 190 A 216 160 0 0 1 472 190" fill="none"/>
+                <text><textPath href="#ouija-arc" startOffset="50%" text-anchor="middle">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</textPath></text>
+                <text x="70" y="70" class="ouija-yes">YES</text>
+                <text x="442" y="70" class="ouija-no">NO</text>
+                <text x="256" y="316" class="ouija-bye">GOOD BYE</text>
+            </svg>
             <div class="table-left">
                 <div class="revolver" id="revolver">
-                    <div class="hammer">▼</div>
+                    <div class="hammer">🕯️</div>
                     <div class="cylinder" id="cylinder">
                         <svg viewBox="0 0 200 200"><use href="#cylinder-art"/></svg>
                         <div class="chamber" data-i="0"></div>
@@ -220,12 +233,12 @@
             </div>
         </div>
 
-        <!-- ป้ายผลการยิง -->
+        <!-- ป้ายผลการสาป -->
         <div id="shot-banner" class="shot-banner"></div>
 
         <!-- กล่องบันทึกการเล่น (Action Log) -->
         <div id="action-log" class="action-log">
-            <div class="log-title">📜 บันทึกการยิง</div>
+            <div class="log-title">📜 บันทึกพิธี</div>
             <div id="log-content" class="log-content"></div>
         </div>
     </div>
