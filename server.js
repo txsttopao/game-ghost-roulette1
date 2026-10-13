@@ -280,7 +280,7 @@ function scheduleIdle(room) {
     }, IDLE_MS);
 }
 
-function beginTurn(room) {
+function beginTurn(room, extraTurn = false) {
     const g = room.game;
     if (checkGameOver(room)) return;
     const cur = room.players[g.turnIndex];
@@ -292,7 +292,8 @@ function beginTurn(room) {
     if (room.players.every(p => p.hp <= 0 || g.roundPlayed.has(p.id))) dealRound(room);
     g.roundPlayed.add(cur.id);
 
-    if (g.skipNextTurn) {
+    // เทิร์นพิเศษ (สาปตัวเองเจอเงาลวง) ไม่โดนโซ่ตรวน — โซ่ตรวนยังรอคนถัดไป
+    if (g.skipNextTurn && !extraTurn) {
         g.skipNextTurn = false;
         g.phase = 'busy';
         g.message = M('mSkipped', { p: P(cur) });
@@ -471,6 +472,11 @@ function attackTarget(room, targetIdx) {
             if (target.hp === 0) markEliminated(g, target);
             g.message = M('mReal', { t: P(target), dmg });
             addLog(room, 'lReal', { dmg });
+        } else if (isSelf) {
+            // สาปตัวเองแล้วเป็นเงาลวง -> ได้เล่นอีกเทิร์น
+            g.message = M('mFakeExtra', { p: P(me) });
+            addLog(room, 'lFake');
+            addLog(room, 'lExtraTurn', { p: P(me) });
         } else {
             g.message = M('mFake', { t: P(target) });
             addLog(room, 'lFake');
@@ -481,7 +487,8 @@ function attackTarget(room, targetIdx) {
 
         if (checkGameOver(room)) return;
         sendRoomState(room);
-        schedule(room, nextTurn, 3000);
+        if (isSelf && !isReal) schedule(room, r => beginTurn(r, true), 3000);
+        else schedule(room, nextTurn, 3000);
     }, SUSPENSE_MS);
 }
 
@@ -561,7 +568,13 @@ function botAct(room) {
             if (g.botPeek && g.botPeek.id === bot.id) {
                 const real = g.botPeek.real !== !!g.effects.inverted;
                 if (!real) target = myIdx;
-            } else if (Math.random() < 0.08) target = myIdx;
+            } else {
+                // ใช้จำนวนร้าย/ลวงที่เหลือ (ทุกคนเห็นได้) — เงาลวงเยอะกว่า = สาปตัวเองเพื่อลุ้นเทิร์นพิเศษ
+                const realLeft = g.crossPool.filter(c => c === 'real').length;
+                const fakeLeft = g.crossPool.length - realLeft;
+                if (g.crossPool.length && fakeLeft > realLeft && Math.random() < 0.7) target = myIdx;
+                else if (Math.random() < 0.05) target = myIdx;
+            }
             g.botPeek = null;
             attackTarget(room, target);
         }, between(1000, 2200));

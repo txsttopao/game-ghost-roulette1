@@ -53,6 +53,7 @@ const STR = {
         mCastSelf: '{p} ร่ายคาถาสาปตัวเอง...', mCast: '{p} ร่ายคาถาสาปใส่ {t}...',
         mReal: '👻 BOO! วิญญาณร้าย! {t} โดนไป {dmg} ดาเมจ', mFake: '💨 ...แค่เงาลวง! {t} รอดไป',
         mLeftSkip: '{p} ออกจากเกม — ข้ามไปคนถัดไป',
+        mFakeExtra: '💨 ...แค่เงาลวง! {p} รอด และได้เล่นอีกเทิร์น! 🔁',
 
         pYourTurnCards: 'ถึงเทิร์นของคุณ! ใช้การ์ดก่อนได้ แล้วกดเริ่มเทิร์น',
         pCardMore: 'ใช้การ์ดเพิ่มได้ หรือกดเริ่มเทิร์น', pCardStart: 'กดเริ่มเทิร์นได้เลย',
@@ -82,7 +83,8 @@ const STR = {
         lAttack: '{p} ใช้คำว่า <span class="log-word">{word}</span> สาป {t}',
         lReal: '- <span class="log-real">👻 BOO! วิญญาณร้าย</span> ทำดาเมจ {dmg}',
         lFake: '- <span class="log-fake">💨 เงาลวง</span> รอดตัวไป',
-        lLeft: '<span class="log-sys">🚪 {p} ออกจากเกม</span>'
+        lLeft: '<span class="log-sys">🚪 {p} ออกจากเกม</span>',
+        lExtraTurn: '<span class="log-sys">🔁 {p} สาปตัวเองเจอเงาลวง ได้เล่นอีกเทิร์น!</span>'
     },
 
     en: {
@@ -132,10 +134,12 @@ const STR = {
         mCastSelf: '{p} casts a curse on themselves...', mCast: '{p} casts a curse on {t}...',
         mReal: '👻 BOO! Evil spirit! {t} takes {dmg} damage', mFake: '💨 ...just a decoy! {t} survives',
         mLeftSkip: '{p} left the game — moving to the next player',
+        mFakeExtra: '💨 ...just a decoy! {p} survives and plays again! 🔁',
         mTurnOfMe: 'Your turn', mTypingMe: 'You are typing a word starting with {letter}', mSkippedMe: '⛓️ You are skipped!',
         mGameOverWinMe: '🎉 Game over! You are the last one standing! 🎉', mCastMe: 'You cast a curse on {t}...',
         mCastSelfMe: 'You cast a curse on yourself...', mCastMeT: '{p} casts a curse on you...',
-        mRealMeT: '👻 BOO! Evil spirit! You take {dmg} damage', mFakeMeT: '💨 ...just a decoy! You survive',
+        mRealMeT: '👻 BOO! Evil spirit! You take {dmg} damage', mFakeMeT: '💨 ...just a decoy! You survive', mFakeExtraMe: '💨 ...just a decoy! You survive and play again! 🔁',
+        lExtraTurnMe: '<span class="log-sys">🔁 {p} cursed yourself with a decoy — play again!</span>',
         lWinMe: '<span class="log-sys">🎉 Game over! {p} win!</span>', lSkippedMe: '<span class="log-sys">⛓️ {p} were skipped</span>',
 
         pYourTurnCards: 'Your turn! Play cards first if you like, then start your turn',
@@ -166,7 +170,8 @@ const STR = {
         lAttack: '{p} used <span class="log-word">{word}</span> to curse {t}',
         lReal: '- <span class="log-real">👻 BOO! Evil spirit</span> deals {dmg}',
         lFake: '- <span class="log-fake">💨 Decoy</span> no harm done',
-        lLeft: '<span class="log-sys">🚪 {p} left the game</span>'
+        lLeft: '<span class="log-sys">🚪 {p} left the game</span>',
+        lExtraTurn: '<span class="log-sys">🔁 {p} cursed themselves with a decoy — plays again!</span>'
     }
 };
 
