@@ -16,14 +16,13 @@ let createSize = 3;
 const TURN_SECONDS = 10;
 const avatars = ['👻', '🧛', '🧟', '💀', '🎃'];
 
+// ชื่อ/คำอธิบายการ์ดอยู่ใน i18n.js (CARD_TEXT)
 const cardsData = {
-    "Ouija":   { emoji: "👁️", title: "ดวงตาผีสาง",       tier: "normal", desc: "แอบดูว่าดวงถัดไปเป็นวิญญาณร้ายหรือเงาลวง" },
-    "Incense": { emoji: "🔥", title: "ธูปบูชา",          tier: "normal", desc: "ปัดเป่าวิญญาณดวงบนทิ้ง แล้วจบเทิร์นทันที" },
-    "Soul":    { emoji: "🌑", title: "เศษเสี้ยววิญญาณ",   tier: "normal", desc: "จุดเทียนชีวิตคืน 1 เล่ม" },
-    "Blood":   { emoji: "🩸", title: "เลือดศักดิ์สิทธิ์",  tier: "rare",   desc: "สลับดวงถัดไป ร้าย⇄ลวง (เทิร์นนี้)" },
-    "Chains":  { emoji: "⛓️", title: "โซ่ตรวนยมโลก",     tier: "rare",   desc: "ผู้เล่นคนถัดไปถูกข้ามเทิร์น" },
-    "Stake":   { emoji: "🗡️", title: "ลิ่มเงิน",          tier: "rare",   desc: "สาปเทิร์นนี้ ถ้าโดนวิญญาณร้าย ดาเมจ x2" }
+    "Ouija": { tier: "normal" }, "Incense": { tier: "normal" }, "Soul": { tier: "normal" },
+    "Blood": { tier: "rare" }, "Chains": { tier: "rare" }, "Stake": { tier: "rare" }
 };
+let logEntries = [];     // เก็บ log ไว้แปลใหม่ตอนเปลี่ยนภาษา
+let lastResults = null;
 
 const ui = {
     letter: document.getElementById("target-letter"),
@@ -63,7 +62,7 @@ function showOffline(show) {
 }
 if (!window.io) window.addEventListener('DOMContentLoaded', () => showOffline(true));
 
-socket.on('errorMsg', msg => alert(msg));
+socket.on('errorMsg', msg => alert(tr(msg)));
 
 socket.on('roomList', list => {
     rooms = list;
@@ -83,12 +82,13 @@ socket.on('roomState', state => {
 });
 
 socket.on('gameStarted', () => {
+    logEntries = [];
     document.getElementById('log-content').innerHTML = "";
     lastPhaseKey = "";
 });
-socket.on('log', html => addLog(html));
+socket.on('log', m => addLog(m));
 socket.on('tick', t => { ui.time.innerText = t; ui.timerFill.style.width = `${t / TURN_SECONDS * 100}%`; if (t <= 2) Sound.tick(); });
-socket.on('privateMsg', text => { ui.message.innerText = text; });
+socket.on('privateMsg', lines => { ui.message.innerText = tr(lines); });
 socket.on('typing', text => { if (!isMyTurn()) ui.input.value = text; });
 
 // แจกการ์ด -> ไพ่บินจากกลางโต๊ะไปหาแต่ละคน
@@ -102,7 +102,7 @@ socket.on('dealt', ids => {
 socket.on('cardPlayed', ({ playerId, cardId }) => {
     const p = currentRoom && currentRoom.players.find(x => x.id === playerId);
     ui.reveal.innerHTML = `<div class="play-card big tier-${cardsData[cardId].tier}">${cardHTML(cardId)}</div><div class="reveal-caption"></div>`;
-    ui.reveal.querySelector('.reveal-caption').innerText = `${playerId === myId ? 'คุณ' : (p ? p.name : '')} ใช้การ์ด!`;
+    ui.reveal.querySelector('.reveal-caption').innerText = t('usedCardCaption', { name: playerId === myId ? t('you') : (p ? p.name : '') });
     restartAnim(ui.reveal, 'show');
     Sound.card();
 });
@@ -155,8 +155,8 @@ function renderRooms(refresh = true) {
 
     if (rooms.length === 0) {
         grid.innerHTML = socket.connected
-            ? `<div class="room-empty">ยังไม่มีห้องเปิดอยู่<br><button onclick="showScreen('create-room-screen')">+ สร้างห้องใหม่</button></div>`
-            : `<div class="room-empty">ยังไม่ได้เชื่อมต่อเซิร์ฟเวอร์ เลยโหลดรายชื่อห้องไม่ได้</div>`;
+            ? `<div class="room-empty">${t('roomEmpty')}<br><button onclick="showScreen('create-room-screen')">${t('roomEmptyCreate')}</button></div>`
+            : `<div class="room-empty">${t('roomNoServer')}</div>`;
         return;
     }
 
@@ -182,7 +182,7 @@ function renderRooms(refresh = true) {
                     <div class="room-skulls">${skullHTML}</div>
                 </div>
                 <div class="status-light ${statusClass}"></div>
-                ${canJoin ? `<button class="join-btn">JOIN</button>` : `<span class="join-full">${room.playing ? 'กำลังเล่น' : 'เต็ม'}</span>`}
+                ${canJoin ? `<button class="join-btn">${t('join')}</button>` : `<span class="join-full">${t(room.playing ? 'playing' : 'full')}</span>`}
             </div>
         `;
     });
@@ -233,7 +233,7 @@ function hostStartGame() {
 function renderLobby(state) {
     const isHost = state.hostId === myId;
     document.getElementById('lobby-room-name').innerText = state.name;
-    document.getElementById('lobby-count').innerText = `ผู้เล่น ${state.players.length}/${state.max}`;
+    document.getElementById('lobby-count').innerText = t('lobbyCount', { n: state.players.length, max: state.max });
 
     const list = document.getElementById('lobby-players');
     list.innerHTML = '';
@@ -241,13 +241,13 @@ function renderLobby(state) {
         const row = document.createElement('div');
         row.className = 'lobby-player' + (p.isBot ? ' bot' : '');
         const label = document.createElement('span');
-        label.innerText = `${p.isBot ? '🤖' : '💀'} ${p.name}${p.isBot ? ' (บอท)' : ''}${p.id === state.hostId ? ' 👑' : ''}${p.id === myId ? ' (คุณ)' : ''}`;
+        label.innerText = `${p.isBot ? '🤖' : '💀'} ${p.name}${p.isBot ? ' ' + t('botTag') : ''}${p.id === state.hostId ? ' 👑' : ''}${p.id === myId ? ' ' + t('youTag') : ''}`;
         row.appendChild(label);
         if (p.isBot && isHost) {
             const rm = document.createElement('button');
             rm.className = 'bot-remove';
             rm.innerText = '✕';
-            rm.title = 'เอาบอทออก';
+            rm.title = t('removeBot');
             rm.onclick = () => socket.emit('removeBot', p.id);
             row.appendChild(rm);
         }
@@ -256,7 +256,7 @@ function renderLobby(state) {
     for (let i = state.players.length; i < state.max; i++) {
         const row = document.createElement('div');
         row.className = 'lobby-player empty';
-        row.innerText = 'รอผู้เล่น...';
+        row.innerText = t('waitingSeat');
         list.appendChild(row);
     }
 
@@ -267,21 +267,25 @@ function renderLobby(state) {
     startBtn.style.display = isHost ? 'inline-block' : 'none';
     startBtn.disabled = state.players.length < 2;
     document.getElementById('lobby-status').innerText = isHost
-        ? (state.players.length < 2 ? 'รอเพื่อนเข้าห้อง หรือกด + เพิ่มบอท เพื่อเล่นกับบอท' : (state.players.length < state.max ? 'กด START GAME ได้เลย (หรือรอให้ห้องเต็ม)' : 'ห้องเต็มแล้ว! กด START GAME ได้เลย'))
-        : 'รอหัวห้อง 👑 กดเริ่มเกม...';
+        ? t(state.players.length < 2 ? 'lobbyNeed' : (state.players.length < state.max ? 'lobbyCan' : 'lobbyFull'))
+        : t('lobbyWait');
 }
 
 // ==========================================
 // 4. กระดานเกม (แสดงผลตามสถานะจากเซิร์ฟเวอร์)
 // ==========================================
-function addLog(htmlStr) {
+function addLog(m) {
+    logEntries.push(m);
     const logBox = document.getElementById('log-content');
     const entry = document.createElement('div');
-    entry.innerHTML = htmlStr;
-    entry.querySelectorAll('[data-pid]').forEach(el => {
-        if (el.dataset.pid === myId) { el.className = 'log-p-0'; el.textContent = 'YOU'; }
-    });
+    entry.innerHTML = tr(m, true);
     logBox.appendChild(entry);
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function renderLog() {
+    const logBox = document.getElementById('log-content');
+    logBox.innerHTML = logEntries.map(m => `<div>${tr(m, true)}</div>`).join('');
     logBox.scrollTop = logBox.scrollHeight;
 }
 
@@ -305,17 +309,17 @@ function renderGame(state) {
 
         const p = players[(myIndex + slot) % n];
         el.querySelector('.name').innerText = slot === 0
-            ? `${p.name} (คุณ)`
-            : p.name + (p.isBot ? ' 🤖' : '') + (p.connected ? '' : ' (ออกแล้ว)');
+            ? `${p.name} ${t('youTag')}`
+            : p.name + (p.isBot ? ' 🤖' : '') + (p.connected ? '' : ' ' + t('leftTag'));
         el.querySelector('.avatar').innerText = avatars[players.indexOf(p) % avatars.length];
         el.dataset.pid = p.id;
-        document.getElementById(`hp-${slot}`).innerHTML = p.hp > 0 ? '<span class="hp-pip"></span>'.repeat(p.hp) : "👻 กลายเป็นผี";
+        document.getElementById(`hp-${slot}`).innerHTML = p.hp > 0 ? '<span class="hp-pip"></span>'.repeat(p.hp) : t('becameGhost');
         el.classList.toggle('dead-player', p.hp <= 0);
         el.classList.toggle('current-turn', p.id === g.turnId && g.phase !== 'over');
 
         if (slot > 0) {
             el.querySelector('.cards-hidden').innerHTML = p.cardCount === 0
-                ? 'ไม่มีการ์ด'
+                ? t('noCards')
                 : Array.from({ length: p.cardCount }, (_, i) => `<span class="mini-back" style="--r:${(i - (p.cardCount - 1) / 2) * 9}deg"></span>`).join('');
         }
     }
@@ -323,19 +327,19 @@ function renderGame(state) {
     // ไพ่ในมือ
     renderHand(state.myCards, myTurn && g.phase === 'idle');
     const me = players.find(p => p.id === myId);
-    ui.dealInfo.innerText = g.phase === 'over' || !me || me.hp <= 0 ? '' : `🎴 แจกการ์ดรอบหน้าอีก ${g.dealIn} เทิร์น`;
+    ui.dealInfo.innerText = g.phase === 'over' || !me || me.hp <= 0 ? '' : (g.dealIn > 0 ? t('dealIn', { n: g.dealIn }) : t('dealNext'));
 
     // โต๊ะกลาง
     const c = g.crosses;
-    ui.crossStatus.innerHTML = `<span class="real">👻 ร้าย ${c.realLeft}</span> · <span class="fake">💨 ลวง ${c.fakeLeft}</span><br><span class="sub">ปล่อยไปแล้ว ${c.thrown}/${c.total} ดวง</span>`;
+    ui.crossStatus.innerHTML = t('crossStatus', { real: c.realLeft, fake: c.fakeLeft, thrown: c.thrown, total: c.total });
     renderCylinder(c);
     ui.letter.innerText = g.letter;
     ui.time.innerText = g.timeLeft;
     ui.timerFill.style.width = g.phase === 'typing' ? `${g.timeLeft / TURN_SECONDS * 100}%` : '0%';
     if (g.phase !== 'firing') document.querySelectorAll('.player.aimed').forEach(el => el.classList.remove('aimed'));
-    ui.message.innerText = g.message;
+    ui.message.innerText = tr(g.message);
     ui.startBtn.style.display = (myTurn && g.phase === 'idle') ? "inline-block" : "none";
-    ui.startBtn.innerText = "เริ่มเทิร์นของคุณ";
+    ui.startBtn.innerText = t('startTurn');
 
     const phaseKey = `${g.turnId}|${g.phase}|${g.letter}`;
     if (phaseKey !== lastPhaseKey) {
@@ -357,7 +361,7 @@ function renderGame(state) {
             if (p.hp <= 0) return;
             const btn = document.createElement("button");
             btn.className = "btn-stab";
-            btn.innerText = (p.id === myId) ? "สาปตัวเอง" : `สาป ${p.name}`;
+            btn.innerText = (p.id === myId) ? t('curseSelf') : t('curse', { name: p.name });
             btn.onclick = () => attackTarget(p.id);
             ui.targets.appendChild(btn);
         });
@@ -543,13 +547,14 @@ function updateResults(state) {
 }
 
 function showResults(results) {
+    lastResults = results;
     const medals = ['🥇', '🥈', '🥉'];
     const winner = results.find(r => r.status === 'winner');
     const me = results.find(r => r.id === myId);
     document.getElementById('results-title').innerText = winner ? 'GAME OVER' : 'DRAW';
     document.getElementById('results-sub').innerText = winner
-        ? (winner.id === myId ? '🎉 คุณรอดเป็นคนสุดท้าย! ชนะแล้ว! 🎉' : `👑 ${winner.name} รอดเป็นคนสุดท้าย`)
-        : '👻 กลายเป็นผีกันหมด เสมอกัน!';
+        ? (winner.id === myId ? t('resWinMe') : t('resWinOther', { name: winner.name }))
+        : t('resDraw');
 
     // โพเดียม ที่ 2 - ที่ 1 - ที่ 3
     const podium = document.getElementById('podium');
@@ -570,18 +575,20 @@ function showResults(results) {
     // ตารางอันดับทุกคน
     const list = document.getElementById('results-list');
     list.innerHTML = '';
-    const statusText = { winner: '👑 ผู้รอดชีวิต', ghost: '👻 กลายเป็นผี', left: '🚪 ออกจากเกม' };
+    const statusText = { winner: t('stWinner'), ghost: t('stGhost'), left: t('stLeft') };
     results.forEach(r => {
         const row = document.createElement('div');
         row.className = 'results-row' + (r.id === myId ? ' is-me' : '');
         row.innerHTML = `<span class="rr-rank">${r.rank}</span><span class="rr-avatar">${avatars[r.avatar % avatars.length]}</span>
             <span class="rr-name"></span><span class="rr-status">${statusText[r.status]}</span>
-            <span class="rr-stat">${r.words} คำ</span><span class="rr-stat rr-longest">${r.longest || '-'}</span>`;
-        row.querySelector('.rr-name').innerText = r.name + (r.id === myId ? ' (คุณ)' : '');
+            <span class="rr-stat">${t('words', { n: r.words })}</span><span class="rr-stat rr-longest">${r.longest || '-'}</span>`;
+        row.querySelector('.rr-name').innerText = r.name + (r.id === myId ? ' ' + t('youTag') : '');
         list.appendChild(row);
     });
 
+    const wasOpen = !document.getElementById('results-modal').classList.contains('hidden');
     document.getElementById('results-modal').classList.remove('hidden');
+    if (wasOpen) return;   // แค่แปลภาษาใหม่ ไม่ต้องเล่นเสียงซ้ำ
     if (me && me.status === 'winner') Sound.win(); else Sound.spin();
 }
 
@@ -608,9 +615,9 @@ let lastHand = [];
 function cardHTML(id) {
     const c = cardsData[id];
     return `<div class="pc-tier">${c.tier.toUpperCase()}</div>
-        <div class="pc-emoji">${c.emoji}</div>
-        <div class="pc-title">${c.title}</div>
-        <div class="pc-desc">${c.desc}</div>`;
+        <div class="pc-emoji">${cardEmoji(id)}</div>
+        <div class="pc-title">${CARD_TEXT[id][lang][0]}</div>
+        <div class="pc-desc">${CARD_TEXT[id][lang][1]}</div>`;
 }
 
 function renderHand(cards, canPlay) {
@@ -674,6 +681,7 @@ function applySettings() {
 applySettings();
 
 function openSettings() {
+    applyStaticI18n();
     document.getElementById('set-name').value = localStorage.getItem('ghostPlayerName') || '';
     document.getElementById('set-sound').checked = Sound.enabled;
     document.getElementById('set-volume').value = Math.round(Sound.volume * 100);
@@ -700,3 +708,23 @@ function resetSettings() {
     openSettings();
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+
+// ==========================================
+// 12. เปลี่ยนภาษา
+// ==========================================
+function setLang(newLang) {
+    if (!STR[newLang]) return;
+    lang = newLang;
+    localStorage.setItem('ghostLang', lang);
+    applyStaticI18n();
+    // วาดทุกอย่างที่อยู่บนจอใหม่ด้วยภาษาใหม่
+    if (!document.getElementById('join-room-screen').classList.contains('hidden')) renderRooms(false);
+    if (currentRoom) {
+        lastHand = currentRoom.myCards.slice();   // ไม่ต้องเล่นแอนิเมชันแจกไพ่ซ้ำ
+        if (currentRoom.status === 'waiting') renderLobby(currentRoom); else renderGame(currentRoom);
+    }
+    renderLog();
+    if (lastResults && !document.getElementById('results-modal').classList.contains('hidden')) showResults(lastResults);
+}
+function toggleLang() { setLang(lang === 'th' ? 'en' : 'th'); }
+applyStaticI18n();

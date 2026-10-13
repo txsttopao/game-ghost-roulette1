@@ -679,3 +679,12 @@ button:disabled { filter: grayscale(0.8) brightness(0.6); cursor: not-allowed; }
 /* ปิดแอนิเมชันพื้นหลัง */
 .no-bg-anim .fog, .no-bg-anim .menu-cylinder, .no-bg-anim .title-text { animation: none !important; }
 .no-bg-anim .menu-ghosts { display: none; }
+
+/* ========================================== */
+/* LANGUAGE */
+/* ========================================== */
+html[lang="th"] [data-lang="en"], html[lang="en"] [data-lang="th"] { display: none !important; }
+.lang-toggle { right: 66px; font-size: 13px; font-weight: 800; letter-spacing: 1px; }
+.lang-choices { display: flex; gap: 6px; }
+.lang-choice { margin: 0; padding: 6px 14px; font-size: 14px; background: #2a2238; box-shadow: none; border: 1px solid rgba(255,255,255,0.15); }
+.lang-choice.selected { background: #1f7a5e; border-color: var(--ecto); box-shadow: 0 0 10px rgba(125,255,207,0.4); }

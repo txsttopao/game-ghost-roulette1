@@ -13,10 +13,9 @@
     <div class="fog"></div>
     <div class="vignette"></div>
     <div id="flash" class="flash"></div>
-    <div id="offline-banner" class="offline-banner hidden">
-        ⚠️ ยังไม่ได้เชื่อมต่อเซิร์ฟเวอร์เกม — ปิดหน้านี้ แล้ว <b>ดับเบิลคลิกไฟล์ start.bat</b> ในโฟลเดอร์เกม (เกมจะเปิดขึ้นมาเอง)
-    </div>
-    <button id="sound-toggle" class="sound-toggle" onclick="toggleSound()" title="เปิด/ปิดเสียง">🔊</button>
+    <div id="offline-banner" class="offline-banner hidden" data-i18n-html="offline"></div>
+    <button id="lang-toggle" class="sound-toggle lang-toggle" onclick="toggleLang()" data-i18n-title="langTitle">TH</button>
+    <button id="sound-toggle" class="sound-toggle" onclick="toggleSound()" data-i18n-title="soundTitle">🔊</button>
 
     <!-- วงเวทอัญเชิญวิญญาณ (ใช้ซ้ำหลายที่) -->
     <svg width="0" height="0" style="position:absolute">
@@ -52,7 +51,7 @@
             <svg class="menu-cylinder" viewBox="0 0 200 200"><use href="#cylinder-art"/></svg>
             <div class="menu-ghosts"><span>👻</span><span>👻</span><span>👻</span></div>
             <h1 class="title-text">GHOST ROULETTE!</h1>
-            <div class="subtitle">SPELL TO SURVIVE · สะกดให้รอด แล้วปล่อยวิญญาณ</div>
+            <div class="subtitle" data-i18n="subtitle"></div>
         </div>
         <div class="menu-buttons">
             <button onclick="showScreen('join-room-screen'); renderRooms();">JOIN ROOM</button>
@@ -67,36 +66,43 @@
     <!-- ========================================== -->
     <div id="settings-modal" class="modal-backdrop hidden" onclick="if (event.target === this) closeSettings()">
         <div class="modal settings-modal">
-            <button class="modal-close" onclick="closeSettings()" title="ปิด">✕</button>
+            <button class="modal-close" onclick="closeSettings()" data-i18n-title="close">✕</button>
             <h2 class="modal-title">SETTING</h2>
             <div class="settings-body">
                 <div class="set-row">
-                    <div class="set-label">👤 ชื่อผู้เล่น<small>ใช้เป็นชื่อเริ่มต้นตอนสร้าง/เข้าห้อง</small></div>
-                    <input type="text" id="set-name" class="create-input set-input" maxlength="16" placeholder="YOUR NAME" oninput="setPlayerNameSetting(this.value)">
+                    <div class="set-label"><span data-i18n="setName"></span><small data-i18n="setNameSub"></small></div>
+                    <input type="text" id="set-name" class="create-input set-input" maxlength="16" data-i18n-ph="phName" oninput="setPlayerNameSetting(this.value)">
                 </div>
                 <div class="set-row">
-                    <div class="set-label">🔊 เสียง<small>เสียงผี การ์ด และเอฟเฟกต์ทั้งหมด</small></div>
-                    <label class="switch"><input type="checkbox" id="set-sound" onchange="setSoundSetting(this.checked)"><span></span></label>
-                </div>
-                <div class="set-row">
-                    <div class="set-label">🎚️ ระดับเสียง <b id="set-volume-label">80%</b></div>
-                    <div class="set-volume">
-                        <input type="range" id="set-volume" min="0" max="100" step="5" oninput="setVolumeSetting(Number(this.value))">
-                        <button class="set-test" onclick="Sound.bang()">ลองฟัง</button>
+                    <div class="set-label"><span data-i18n="setLang"></span><small data-i18n="setLangSub"></small></div>
+                    <div class="lang-choices">
+                        <button class="lang-choice" data-code="th" onclick="setLang('th')">ไทย</button>
+                        <button class="lang-choice" data-code="en" onclick="setLang('en')">English</button>
                     </div>
                 </div>
                 <div class="set-row">
-                    <div class="set-label">💥 จอสั่น & แฟลช<small>ตอนมีคนโดนวิญญาณร้าย (ปิดถ้าเวียนหัว)</small></div>
+                    <div class="set-label"><span data-i18n="setSound"></span><small data-i18n="setSoundSub"></small></div>
+                    <label class="switch"><input type="checkbox" id="set-sound" onchange="setSoundSetting(this.checked)"><span></span></label>
+                </div>
+                <div class="set-row">
+                    <div class="set-label"><span><span data-i18n="setVolume"></span> <b id="set-volume-label">80%</b></span></div>
+                    <div class="set-volume">
+                        <input type="range" id="set-volume" min="0" max="100" step="5" oninput="setVolumeSetting(Number(this.value))">
+                        <button class="set-test" onclick="Sound.bang()" data-i18n="setTest"></button>
+                    </div>
+                </div>
+                <div class="set-row">
+                    <div class="set-label"><span data-i18n="setShake"></span><small data-i18n="setShakeSub"></small></div>
                     <label class="switch"><input type="checkbox" id="set-shake" onchange="Settings.set('shake', this.checked)"><span></span></label>
                 </div>
                 <div class="set-row">
-                    <div class="set-label">✨ แอนิเมชันพื้นหลัง<small>หมอกและผีลอย (ปิดถ้าเครื่องช้า)</small></div>
+                    <div class="set-label"><span data-i18n="setBg"></span><small data-i18n="setBgSub"></small></div>
                     <label class="switch"><input type="checkbox" id="set-bganim" onchange="Settings.set('bgAnim', this.checked)"><span></span></label>
                 </div>
             </div>
             <div class="settings-actions">
-                <button class="btn-home" onclick="resetSettings()">↺ คืนค่าเริ่มต้น</button>
-                <button class="btn-again" onclick="closeSettings()">✔ เสร็จ</button>
+                <button class="btn-home" onclick="resetSettings()" data-i18n="setReset"></button>
+                <button class="btn-again" onclick="closeSettings()" data-i18n="setDone"></button>
             </div>
         </div>
     </div>
@@ -106,10 +112,11 @@
     <!-- ========================================== -->
     <div id="rules-modal" class="modal-backdrop hidden" onclick="if (event.target === this) closeRules()">
         <div class="modal">
-            <button class="modal-close" onclick="closeRules()" title="ปิด">✕</button>
-            <h2 class="modal-title">กติกา</h2>
+            <button class="modal-close" onclick="closeRules()" data-i18n-title="close">✕</button>
+            <h2 class="modal-title" data-lang="th">กติกา</h2>
+            <h2 class="modal-title" data-lang="en">RULES</h2>
 
-            <div class="modal-body">
+            <div class="modal-body" data-lang="th">
                 <section>
                     <h3>🎯 เป้าหมาย</h3>
                     <p>ทุกคนเริ่มด้วย<b>เทียนชีวิต 3 เล่ม</b> 🕯️ เทียนดับหมด = กลายเป็นผี ใครรอดเป็นคนสุดท้ายชนะ</p>
@@ -162,6 +169,60 @@
                     </ul>
                 </section>
             </div>
+
+            <div class="modal-body" data-lang="en">
+                <section>
+                    <h3>🎯 Goal</h3>
+                    <p>Everyone starts with <b>3 life candles</b> 🕯️. Lose them all and you become a ghost. The last one standing wins.</p>
+                </section>
+
+                <section>
+                    <h3>⌨️ Your turn</h3>
+                    <ol>
+                        <li>(If you have cards) click cards in your hand <b>first</b> — you may play several — then press <b>Start your turn</b></li>
+                        <li>You get a random letter. You have <b>10 seconds</b> to type an English word starting with it, then press <b>Enter</b></li>
+                        <li>The word needs <b>3+ letters</b>, must be in the dictionary, and <b>can't repeat</b> a word anyone already used</li>
+                        <li><b>Correct</b> → you unleash a spirit: curse anyone, even yourself</li>
+                        <li><b>Wrong / time's up</b> → you lose the turn, no curse</li>
+                    </ol>
+                </section>
+
+                <section>
+                    <h3>🔮 The spirit circle</h3>
+                    <p>The circle holds 5 spirits: <span class="r-real">3 evil</span> + <span class="r-fake">2 decoys</span> in random order</p>
+                    <ul>
+                        <li>Hit by an <span class="r-real">evil spirit</span> → <b>BOO!</b> one life candle goes out</li>
+                        <li>A <span class="r-fake">decoy</span> → it fades away, no harm</li>
+                        <li>The evil/decoy count left is shown under the circle. After all 5 are released, a new circle is summoned</li>
+                        <li>💡 If you know the next one is a decoy, cursing yourself is safe</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3>🎴 Skill cards</h3>
+                    <p><b>Dealing:</b> once every living player has had a turn, each gets 1 card (<span class="r-normal">NORMAL</span> 70% · <span class="r-rare">RARE</span> 30%). Max 5 in hand. Others only see the card backs.</p>
+                    <p><b>Playing:</b> on your turn, click a card <b>before starting your turn</b>. It takes effect immediately and you can play several. Everyone sees which card you played (except the Spirit Eye result).</p>
+                    <table class="rules-cards">
+                        <tr><td><span class="r-normal">👁️ Spirit Eye</span></td><td>Peek whether the next spirit is evil or a decoy (only you see it)</td></tr>
+                        <tr><td><span class="r-normal">🔥 Incense</span></td><td>Dispel the top spirit and <b>end your turn at once</b> — no typing, no curse</td></tr>
+                        <tr><td><span class="r-normal">🌑 Soul Shard</span></td><td>Relight 1 life candle (max 3)</td></tr>
+                        <tr><td><span class="r-rare">🩸 Holy Blood</span></td><td>Flip the next spirit evil ⇄ decoy (for your curse this turn)</td></tr>
+                        <tr><td><span class="r-rare">⛓️ Chains of Hell</span></td><td>The next player is skipped</td></tr>
+                        <tr><td><span class="r-rare">🗡️ Silver Stake</span></td><td>Your curse this turn deals x2 if it is evil</td></tr>
+                    </table>
+                </section>
+
+                <section>
+                    <h3>👥 Rooms & extra rules</h3>
+                    <ul>
+                        <li>The host 👑 can press START GAME with 2+ players. The host goes first, then turns follow the join order</li>
+                        <li>No friends around? The host can press <b>+ Add bot</b> in the lobby (✕ removes a bot)</li>
+                        <li>Don't start your turn within <b>30 seconds</b> → your turn is skipped</li>
+                        <li>Don't pick a target within <b>15 seconds</b> → a random target is chosen</li>
+                        <li>Leaving mid-game = you instantly become a ghost</li>
+                    </ul>
+                </section>
+            </div>
         </div>
     </div>
 
@@ -169,9 +230,9 @@
     <!-- หน้า 2: JOIN ROOM -->
     <!-- ========================================== -->
     <div id="join-room-screen" class="screen-container hidden">
-        <button class="back-btn" onclick="showScreen('main-menu-screen')">⬅ กลับ</button>
+        <button class="back-btn" onclick="showScreen('main-menu-screen')" data-i18n="back"></button>
         <h1 class="title-text small">JOIN ROOM</h1>
-        <input type="text" id="join-player-name" placeholder="YOUR NAME" class="create-input" autocomplete="off" maxlength="16">
+        <input type="text" id="join-player-name" data-i18n-ph="phName" class="create-input" autocomplete="off" maxlength="16">
         <div class="room-grid" id="room-grid"></div>
     </div>
 
@@ -179,16 +240,16 @@
     <!-- หน้า 3: CREATE ROOM -->
     <!-- ========================================== -->
     <div id="create-room-screen" class="screen-container hidden">
-        <button class="back-btn" onclick="showScreen('main-menu-screen')">⬅ กลับ</button>
+        <button class="back-btn" onclick="showScreen('main-menu-screen')" data-i18n="back"></button>
         <h1 class="title-text small">CREATE ROOM</h1>
 
         <div class="panel">
-            <label class="field-label">ชื่อของคุณ</label>
-            <input type="text" id="create-player-name" placeholder="YOUR NAME" class="create-input" autocomplete="off" maxlength="16">
-            <label class="field-label">ชื่อห้อง</label>
-            <input type="text" id="new-room-name" placeholder="NAME ROOM" class="create-input" autocomplete="off" maxlength="20">
+            <label class="field-label" data-i18n="lblYourName"></label>
+            <input type="text" id="create-player-name" data-i18n-ph="phName" class="create-input" autocomplete="off" maxlength="16">
+            <label class="field-label" data-i18n="lblRoomName"></label>
+            <input type="text" id="new-room-name" data-i18n-ph="phRoom" class="create-input" autocomplete="off" maxlength="20">
 
-            <label class="field-label">จำนวนผู้เล่น</label>
+            <label class="field-label" data-i18n="lblPlayers"></label>
             <div class="size-selector">
                 <button id="btn-size-3" class="size-btn selected" onclick="selectRoomSize(3)">3</button>
                 <button id="btn-size-5" class="size-btn" onclick="selectRoomSize(5)">5</button>
@@ -202,13 +263,13 @@
     <!-- หน้า 3.5: ห้องรอผู้เล่น (LOBBY) -->
     <!-- ========================================== -->
     <div id="lobby-screen" class="screen-container hidden">
-        <button class="back-btn" onclick="leaveRoom()">⬅ ออกจากห้อง</button>
+        <button class="back-btn" onclick="leaveRoom()" data-i18n="leaveRoom"></button>
         <h1 class="title-text small" id="lobby-room-name">ROOM</h1>
         <div class="panel">
             <div class="lobby-count" id="lobby-count"></div>
             <div class="lobby-players" id="lobby-players"></div>
             <div class="lobby-status" id="lobby-status"></div>
-            <button id="lobby-addbot-btn" class="addbot-btn" onclick="socket.emit('addBot')">+ เพิ่มบอท 🤖</button>
+            <button id="lobby-addbot-btn" class="addbot-btn" onclick="socket.emit('addBot')" data-i18n="addBot"></button>
             <button id="lobby-start-btn" class="create-submit-btn" onclick="hostStartGame()">START GAME</button>
         </div>
     </div>
@@ -229,7 +290,7 @@
             <div class="self-row">
                 <div class="avatar">👻</div>
                 <div>
-                    <div class="name">YOU (คุณ)</div>
+                    <div class="name">YOU</div>
                     <div class="hp" id="hp-0"></div>
                 </div>
             </div>
@@ -267,9 +328,9 @@
                     <div class="timer-bar"><div id="timer-fill"></div></div>
                     <span id="time">0</span>s
                 </div>
-                <input type="text" id="word-input" placeholder="พิมพ์ศัพท์..." autocomplete="off" disabled>
-                <div id="message-box">รอเริ่มเกม...</div>
-                <button id="start-btn" onclick="startNormalTurn()">เริ่มเทิร์น</button>
+                <input type="text" id="word-input" data-i18n-ph="phWord" autocomplete="off" disabled>
+                <div id="message-box" data-i18n="waitingStart"></div>
+                <button id="start-btn" onclick="startNormalTurn()" data-i18n="startTurn"></button>
                 <div id="target-selection" class="hidden"></div>
             </div>
         </div>
@@ -284,7 +345,7 @@
 
         <!-- กล่องบันทึกการเล่น (Action Log) -->
         <div id="action-log" class="action-log">
-            <div class="log-title">📜 บันทึกพิธี</div>
+            <div class="log-title" data-i18n="logTitle"></div>
             <div id="log-content" class="log-content"></div>
         </div>
     </div>
@@ -295,11 +356,11 @@
             <h2 class="modal-title" id="results-title">GAME OVER</h2>
             <div class="results-sub" id="results-sub"></div>
             <div class="podium" id="podium"></div>
-            <div class="results-head"><span>อันดับ</span><span>ผู้เล่น</span><span>สถานะ</span><span>คำที่ใช้</span><span>คำยาวสุด</span></div>
+            <div class="results-head"><span data-i18n="resRank"></span><span data-i18n="resPlayer"></span><span data-i18n="resStatus"></span><span data-i18n="resWords"></span><span data-i18n="resLongest"></span></div>
             <div class="results-list" id="results-list"></div>
             <div class="results-actions">
-                <button class="btn-home" onclick="goHomeFromResults()">🏠 กลับหน้าแรก</button>
-                <button class="btn-again" onclick="playAgain()">🔁 เล่นอีกครั้ง</button>
+                <button class="btn-home" onclick="goHomeFromResults()" data-i18n="btnHome"></button>
+                <button class="btn-again" onclick="playAgain()" data-i18n="btnAgain"></button>
             </div>
         </div>
     </div>
@@ -310,6 +371,7 @@
         window.SERVER_URL = location.protocol === 'file:' ? 'http://localhost:3000' : '';
         document.write('<script src="' + window.SERVER_URL + '/socket.io/socket.io.js"><\/script>');
     </script>
+    <script src="i18n.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
