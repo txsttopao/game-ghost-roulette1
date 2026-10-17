@@ -39,16 +39,19 @@ fetch(dictionaryUrl)
     })
     .catch(err => {
         console.log('โหลดพจนานุกรมออนไลน์ไม่ได้ ใช้ศัพท์สำรอง:', err.message);
-        dictionary = new Set(["SAW", "SOUL", "SKULL", "SCARE", "SAD", "MONSTER", "NIGHTMARE", "VAMPIRE", "GHOST"]);
+        dictionary = new Set(["SOUL", "SKULL", "SCARE", "SCREAM", "SPIRIT", "MONSTER", "NIGHTMARE", "VAMPIRE", "GHOST"]);
     })
     .finally(() => { dictionaryReady = true; if (!botWords.A) buildBotWords(); });
 
-// คำที่บอทเลือกใช้ (ยาว 3-10 ตัว) แยกตามตัวอักษรแรก
+// ศัพท์ต้องยาวอย่างน้อยกี่ตัวอักษร
+const MIN_WORD_LEN = 4;
+
+// คำที่บอทเลือกใช้ (ยาว MIN_WORD_LEN-10 ตัว) แยกตามตัวอักษรแรก
 let botWords = {};
 function buildBotWords() {
     botWords = {};
     for (const w of dictionary) {
-        if (w.length >= 3 && w.length <= 10 && /^[A-Z]+$/.test(w)) (botWords[w[0]] ||= []).push(w);
+        if (w.length >= MIN_WORD_LEN && w.length <= 10 && /^[A-Z]+$/.test(w)) (botWords[w[0]] ||= []).push(w);
     }
 }
 
@@ -389,7 +392,7 @@ function validateWord(room, rawWord) {
     if (!word.startsWith(g.letter)) return failTurn(room, M('rWrongLetter', { letter: g.letter }));
     if (!dictionary.has(word)) return failTurn(room, M('rNotDict'));
     if (g.usedWords.has(word)) return failTurn(room, M('rUsed'));
-    if (word.length < 3) return failTurn(room, M('rShort'));
+    if (word.length < MIN_WORD_LEN) return failTurn(room, M('rShort'));
 
     g.usedWords.add(word);
     const st = g.stats[me.id] ||= { words: 0, longest: '' };
